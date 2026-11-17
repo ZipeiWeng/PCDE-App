@@ -199,3 +199,29 @@ test('Activity summaries allow a scroll to start without enabling collapse or un
   assert.equal(f.doc.emit('pointerdown',f.event(f.unrelated)).prevented,true);
   f.guard.destroy();
 });
+
+test('dedicated return lesson grants artwork swipe access without unlocking its click or underlying controls',()=>{
+  const f=fixture(),artwork=f.node('swipe animation',{overlay:true});
+  f.setPolicy({overlaySwipe:true});
+  assert.deepEqual(onboardingTargetAccess(artwork,{overlaySwipe:true},f.layer),{control:false,gesture:true,scroll:false,overlay:true});
+  for(const type of ['pointerdown','pointermove','pointerup','touchstart','touchmove','touchend']){
+    assert.equal(f.doc.emit(type,f.event(artwork)).prevented,undefined,type);
+  }
+  assert.equal(f.layer.emit('pointerdown',f.event(artwork)).stopped,true,'the owned contact does not bubble to the app');
+  assert.equal(f.doc.emit('click',f.event(artwork)).prevented,true);
+  assert.equal(f.doc.emit('pointerdown',f.event(f.unrelated)).prevented,true);
+  f.doc.emit('pointerdown',f.event(f.next));f.doc.emit('pointerup',f.event(f.next));
+  assert.equal(f.doc.emit('click',f.event(f.next)).prevented,undefined,'guide controls remain available');
+  assert.equal(onboardingTargetAccess(f.next,{overlaySwipe:true},f.layer).gesture,false,'buttons never become swipe surfaces');
+  f.guard.destroy();
+});
+
+test('changing away from the return lesson immediately locks artwork gestures again',()=>{
+  const f=fixture(),artwork=f.node('swipe animation',{overlay:true});
+  f.setPolicy({overlaySwipe:true});
+  assert.equal(f.doc.emit('pointerdown',f.event(artwork)).prevented,undefined);
+  f.setPolicy({});
+  assert.equal(f.doc.emit('pointerup',f.event(artwork)).prevented,true);
+  assert.equal(f.doc.emit('pointerdown',f.event(artwork)).prevented,true);
+  f.guard.destroy();
+});

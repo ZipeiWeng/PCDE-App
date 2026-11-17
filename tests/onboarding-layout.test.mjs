@@ -8,11 +8,11 @@ import { placeCoachNote } from '../dist/onboarding-position.js';
 const steps=onboardingSteps();
 const byId=Object.fromEntries(steps.map(item=>[item.id,item]));
 const outcome=item=>Object.fromEntries([['type',item.event],...['index','section','view','module','open'].filter(key=>item[key]!==undefined).map(key=>[key,item[key]])]);
-const opened={opened:true,coloursComplete:true,clinicIntroduced:true};
+const opened={opened:true,coloursComplete:true};
 
-test('there are eight real scenes without separate entry, setup, close or input exercises',()=>{
-  assert.equal(steps.length,8);
-  assert.deepEqual(steps.map(item=>item.id),['welcome','device','score','red-alert','vet-results','card','profile','explore']);
+test('there are seven core scenes without mandatory clinic, setup, close or input exercises',()=>{
+  assert.equal(steps.length,7);
+  assert.deepEqual(steps.map(item=>item.id),['welcome','device','score','red-alert','card','profile','explore']);
   assert.ok(!steps.some(item=>['health','device-setup','card-summary','settings','input-cancel'].includes(item.id)));
   assert.ok(!steps.some(item=>['compose','input-cancel','module-toggle'].includes(item.event)));
   assert.equal(byId.score.visual,'colours');
@@ -35,7 +35,7 @@ test('opening a destination stays in its current scene until an intentional exit
   assert.equal(isTourEntry('card',{type:'sheet-close'}),false);
 });
 
-test('the primary eight-scene route completes through declared actual outcomes',()=>{
+test('the seven-scene route completes without searching or opening a clinic',()=>{
   let id='welcome';
   for(let index=0;index<steps.length-1;index++){
     assert.equal(id,steps[index].id);
@@ -46,31 +46,33 @@ test('the primary eight-scene route completes through declared actual outcomes',
   assert.equal(nextTourStep(id,{type:'continue'},opened),'explore');
 });
 
-test('alert and address search share one scene; only results advance it',()=>{
-  for(const event of [{type:'input'},{type:'focus'},{type:'blur'},{type:'skip'},{type:'continue'},{type:'vet',view:'search'},{type:'vet',view:'detail'}]){
-    assert.equal(nextTourStep('red-alert',event),'red-alert');
+test('clinic search and results are optional exploration within the alert scene',()=>{
+  for(const scene of [{},opened]) {
+    for(const event of [{type:'input'},{type:'focus'},{type:'blur'},{type:'skip'},
+      ...['search','results','detail'].map(view=>({type:'vet',view}))]) {
+      assert.equal(nextTourStep('red-alert',event,scene),'red-alert');
+    }
   }
-  assert.equal(nextTourStep('red-alert',{type:'vet',view:'results'}),'red-alert');
-  assert.equal(nextTourStep('red-alert',{type:'vet',view:'results'},opened),'vet-results');
-  assert.equal(byId['vet-results'].startsOpen,true);
+  assert.equal(nextTourStep('red-alert',{type:'continue'},opened),'card');
+  assert.equal(byId['vet-results'],undefined,'no mandatory clinic chapter remains');
 });
 
 test('exploring clinics, nested settings and records does not silently advance the tour',()=>{
-  for(const view of ['search','results','detail'])assert.equal(nextTourStep('vet-results',{type:'vet',view},opened),'vet-results');
+  for(const view of ['search','results','detail'])assert.equal(nextTourStep('red-alert',{type:'vet',view},opened),'red-alert');
   for(const section of ['device','connect','sampling'])assert.equal(nextTourStep('device',{type:'settings',section},opened),'device');
   for(const section of ['profile','preferences','language','subscription'])assert.equal(nextTourStep('profile',{type:'settings',section},opened),'profile');
   for(const event of [{type:'module-toggle',module:'vaccination',open:false},{type:'module-toggle',module:'parasite',open:true},{type:'sheet-close'}])assert.equal(nextTourStep('card',event,opened),'card');
 });
 
 test('real close events require an opened matching surface, preventing stale close transitions',()=>{
-  const exits=[['device','settings-close','score'],['card','card-close','profile'],['profile','settings-close','explore']];
+  const exits=[['device','settings-close','score'],['red-alert','sheet-close','card'],['card','card-close','profile'],['profile','settings-close','explore']];
   for(const [id,type,next] of exits){
     assert.equal(nextTourStep(id,{type}),id);
     assert.equal(nextTourStep(id,{type},{opened:false}),id);
     assert.equal(nextTourStep(id,{type},opened),next);
     assert.equal(nextTourStep(id,{type:'continue'},opened),next);
     assert.equal(byId[id].continueAction,'home-good');
-    assert.equal(byId[id].continueLabel,id==='device'?'Try the health demo':'Back to home');
+    assert.equal(byId[id].continueLabel,id==='device'?'Try the health demo':id==='red-alert'?'Got it':'Back to home');
     for(const other of ['sheet-close','settings-close','card-close'].filter(event=>event!==type))assert.equal(nextTourStep(id,{type:other},opened),id);
   }
   assert.equal(nextTourStep('score',{type:'sheet-close'}),'score');
@@ -102,7 +104,7 @@ test('both languages preserve outcomes and concise purposeful labels',()=>{
   for(const item of steps){
     assert.ok(item.label.split(/\s+/).length<=7,item.id);
     assert.ok(item.description.length<100,item.id);
-    assert.equal(item.showDescription,true);
+    assert.equal(item.showDescription,item.id!=='red-alert','the alert uses its own page copy rather than another explanation');
     assert.equal(coachCopy(item.id),item.label);
   }
   for(const item of zh){
@@ -125,8 +127,8 @@ test('welcome preserves the current home before any tutorial readings are create
 
 test('all accounts connect first, can choose an example, and never repeat Device',()=>{
   const route=onboardingSteps('en',{needsConnection:true});
-  assert.equal(route.length,8);
-  assert.deepEqual(route.map(item=>item.id),['welcome','device','score','red-alert','vet-results','card','profile','explore']);
+  assert.equal(route.length,7);
+  assert.deepEqual(route.map(item=>item.id),['welcome','device','score','red-alert','card','profile','explore']);
   const device=route.find(item=>item.id==='device');
   assert.equal(device.action,'home-current');
   assert.equal(device.skipEvent,'example');
@@ -134,12 +136,12 @@ test('all accounts connect first, can choose an example, and never repeat Device
   assert.equal(nextTourStep('device',{type:'example'}),'score');
   assert.equal(nextTourStep('device',{type:'continue'},{needsConnection:true,opened:false}),'device');
   assert.equal(nextTourStep('device',{type:'continue'},{needsConnection:true,opened:true}),'score');
-  assert.equal(nextTourStep('vet-results',{type:'sheet-close'},{needsConnection:true,opened:true,clinicIntroduced:true}),'card');
+  assert.equal(nextTourStep('red-alert',{type:'sheet-close'},{needsConnection:true,opened:true}),'card');
   assert.equal(nextTourStep('score',{type:'continue'},{needsConnection:true,opened:true,coloursComplete:true}),'red-alert');
   assert.equal(onboardingSteps('zh',{needsConnection:true}).find(item=>item.id==='device').skipLabel,'没有项圈？先体验示例');
 });
 
-test('regular and test accounts use exactly the same eight-scene route',()=>{
+test('regular and test accounts use exactly the same seven-scene route',()=>{
   for(const language of ['en','zh'])assert.deepEqual(onboardingSteps(language,{needsConnection:true}),onboardingSteps(language,{needsConnection:false}));
 });
 
@@ -154,25 +156,29 @@ test('Current health opens the alert only through an explicit example action',()
   assert.equal(byId['red-alert'].startsOpen,true);
   assert.equal(byId['red-alert'].target,'[data-find-vet]');
   assert.equal(byId['red-alert'].entry.type,'health-alert');
-  assert.equal(byId['red-alert'].continueLabel,undefined);
+  assert.equal(byId['red-alert'].continueLabel,'Got it');
+  assert.equal(byId['red-alert'].event,'continue');
+  assert.equal(byId['red-alert'].continueAction,'home-good');
   assert.match(byId['red-alert'].label,/Yellow or red/);
   assert.equal(nextTourStep('red-alert',{type:'continue'}),'red-alert');
   assert.equal(nextTourStep('red-alert',{type:'health-alert'}),'red-alert');
   assert.equal(nextTourStep('red-alert',{type:'vet',view:'results'}),'red-alert');
 });
 
-test('clinic introduction precedes the actual return home, with no premature close or continue exit',()=>{
-  assert.equal(byId['vet-results'].event,'sheet-close');
-  assert.equal(byId['vet-results'].continueAction,'home-good');
-  for(const clinicIntroduced of [undefined,false]){
-    const scene={opened:true,clinicIntroduced};
-    for(const event of [{type:'sheet-close'},{type:'continue'},{type:'vet',view:'detail'}]){
-      assert.equal(nextTourStep('vet-results',event,scene),'vet-results');
+test('acknowledging the alert returns home without requiring clinic interaction',()=>{
+  const alert=byId['red-alert'];
+  assert.equal(alert.event,'continue');
+  assert.equal(alert.continueAction,'home-good');
+  assert.equal(alert.startsOpen,true);
+  assert.equal(alert.requiresOpen,true);
+  assert.deepEqual(alert.acceptEvents,[{type:'sheet-close'}]);
+  for(const type of ['continue','sheet-close']){
+    for(const scene of [{},{opened:false}])assert.equal(nextTourStep('red-alert',{type},scene),'red-alert');
+    assert.equal(nextTourStep('red-alert',{type},opened),'card');
+    for(const view of ['search','results','detail']){
+      assert.equal(nextTourStep('red-alert',{type},{...opened,view}),'card','optional exploration never adds an exit prerequisite');
     }
   }
-  assert.equal(nextTourStep('vet-results',{type:'sheet-close'},{opened:false,clinicIntroduced:true}),'vet-results');
-  assert.equal(nextTourStep('vet-results',{type:'continue'},opened),'vet-results','Got it acknowledges the clinic; it does not exit');
-  assert.equal(nextTourStep('vet-results',{type:'sheet-close'},opened),'card');
   assert.equal(byId.card.home,true);
   assert.equal(byId.card.target,'#health-card-button');
   assert.equal(byId.card.action,undefined,'returning home does not open the next destination');

@@ -198,7 +198,7 @@ test('empty Current health distinguishes disconnected from connected without mak
   empty.open();
   assert.match(body.innerHTML,/<h3>No readings yet<\/h3>/);
   assert.match(body.innerHTML,/Connect collar/);
-  assert.doesNotMatch(body.innerHTML,/Looking good|No unusual changes|Possible joint|Usual|Simulated data/);
+  assert.doesNotMatch(body.innerHTML.split('<section class="insight-colour-legend"')[0],/Looking good|No unusual changes|Possible joint|Usual|Simulated data/);
   dialog.close();
   sample=createEmptySnapshot({connected:true});
   empty.open();
@@ -213,4 +213,47 @@ test('an owner-reported emergency with no readings never says sensor changes are
   assert.match(body.innerHTML,/No sensor readings available/);
   assert.match(body.innerHTML,/Contact nearest vet/);
   assert.doesNotMatch(body.innerHTML,/No major sensor changes|No unusual changes|Simulated data/);
+});
+
+test('colour meanings remain available after each Current health assessment without implying the current status', () => {
+  let sample;
+  const detail=initInsights({getSnapshot:()=>sample,getStore:()=>({profile:{name:'Pip'}})});
+  for (sample of [
+    {...usual,baseline:usual,status:'good'},
+    {...usual,baseline:usual,status:'watch'},
+    {...usual,baseline:usual,status:'alert',observedSigns:['collapse']},
+    createEmptySnapshot(),
+    createEmptySnapshot({connected:true}),
+    {heart:81,connected:true},
+  ]) {
+    detail.open();
+    assert.equal(elements['sheet-title'].textContent,'Current health');
+    assert.equal((body.innerHTML.match(/class="insight-colour-legend"/g)||[]).length,1);
+    assert.match(body.innerHTML,/Meaning of Colours/);
+    assert.match(body.innerHTML,/is-red[\s\S]*Get help now[\s\S]*is-yellow[\s\S]*Check changes[\s\S]*is-green[\s\S]*Usual pattern/);
+    assert.ok(body.innerHTML.indexOf('insight-colour-legend')>body.innerHTML.indexOf('data-check-signs'));
+    assert.ok(body.innerHTML.indexOf('insight-colour-legend')<body.innerHTML.lastIndexOf('class="insight-limit"'));
+    assert.doesNotMatch(body.innerHTML.match(/<section class="insight-colour-legend"[\s\S]*?<\/section>/)[0],/<button|aria-pressed|aria-current/);
+    dialog.close();
+  }
+});
+
+test('colour reference does not distract from alerts, urgent-sign checks or clinic search', () => {
+  for (const open of [()=>insights.open({alarm:true}),()=>insights.openSignCheck(),()=>insights.openVets()]) {
+    open();
+    assert.doesNotMatch(body.innerHTML,/insight-colour-legend|Meaning of Colours/);
+    dialog.close();
+  }
+});
+
+test('colour reference follows the saved interface language when reopened', () => {
+  let language='zh';
+  const detail=initInsights({getSnapshot:()=>({...usual,baseline:usual,status:'good'}),getStore:()=>({preferences:{language}})});
+  detail.open();
+  assert.match(body.innerHTML,/水球颜色含义/);
+  assert.match(body.innerHTML,/红色: [\s\S]*立即求助[\s\S]*黄色: [\s\S]*关注变化[\s\S]*绿色: [\s\S]*接近平常/);
+  dialog.close();
+  language='en';detail.open();
+  assert.match(body.innerHTML,/Meaning of Colours/);
+  assert.doesNotMatch(body.innerHTML,/水球颜色含义/);
 });

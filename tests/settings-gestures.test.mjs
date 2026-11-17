@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { installSettingsGestures, installSwipeDismiss } from '../dist/settings-gestures.js';
+import { installSettingsGestures, installSwipeDismiss, installCoachSwipeDismiss } from '../dist/settings-gestures.js';
 
 class Surface {
   handlers = new Map();
@@ -17,7 +17,7 @@ function harness(mode = 'settings', options = {}) {
   win.performance = {now:()=>clock};
   root.ownerDocument = {defaultView:win,getSelection:()=>({isCollapsed:!selected,toString:()=>selected?'selected text':''})};
   const actions=[];
-  const teardown=mode === 'dismiss' ? installSwipeDismiss(root,{
+  const teardown=mode === 'dismiss' || mode === 'coach' ? (mode === 'coach' ? installCoachSwipeDismiss : installSwipeDismiss)(root,{
     isEnabled:()=>enabled,onDismiss:()=>{actions.push('dismiss');enabled=false;},
     ...options,
   }) : installSettingsGestures(root,{
@@ -252,4 +252,57 @@ test('dismiss release click remains shielded if closing the modal immediately te
   const click=h.event(0,100);h.win.emit('click',click);
   assert.equal(click.prevented,true);assert.equal(click.stopped,true);
   for(const surface of [h.win,h.root]) for(const callbacks of surface.handlers.values()) assert.equal(callbacks.size,0);
+});
+
+test('return lesson accepts a short right swipe on its text or illustration, with natural diagonal drift',()=>{
+  for(const path of [
+    [[132,100]],
+    [[108,113],[148,128]],
+    [[110,106],[142,130]],
+  ]) {
+    const h=harness('coach');
+    const target={closest:selector=>selector.split(',').includes('.coach-layer')?{}:null};
+    h.down(100,100,{target});
+    for(const [x,y] of path)h.move(x,y,{target});
+    const [x,y]=path.at(-1),release=h.up(x,y,{target});
+    assert.deepEqual(h.actions,['dismiss']);
+    assert.equal(release.prevented,true);
+    h.win.emit('pointerup',release);
+    assert.deepEqual(h.actions,['dismiss'],'the same release cannot advance a second lesson');
+    const click=h.event(x,y,{target});h.win.emit('click',click);
+    assert.equal(click.prevented,true,'release cannot activate a newly exposed button');
+    h.teardown();
+  }
+});
+
+test('return lesson rejects taps, short motion, left swipes, vertical gestures and cancelled contacts',()=>{
+  const h=harness('coach');
+  for(const [dx,dy] of [[3,2],[31,0],[-90,0],[25,70],[45,42]]) {
+    h.down();h.move(100+dx,100+dy);h.up(100+dx,100+dy);
+  }
+  h.down();h.move(105,145);h.move(180,150);h.up(180,150);
+  h.down();h.move(140,110);h.win.emit('pointercancel',h.event(140,110));h.up(140,110);
+  h.down();h.down(110,100,{pointerId:2,isPrimary:false});h.up(180);h.up(190,100,{pointerId:2});
+  assert.deepEqual(h.actions,[]);
+  h.teardown();
+});
+
+test('return lesson never turns End tour/button drags into dismissal, or runs outside its active scene',()=>{
+  const h=harness('coach');
+  for(const control of ['button','a','input','select','textarea']) {
+    const target={closest:selector=>selector.split(',').includes(control)||selector.split(',').includes('.coach-layer')?{}:null};
+    h.down(100,100,{target});h.move(180,110,{target});h.up(180,110,{target});
+  }
+  h.enable(false);h.swipe(80);h.enable(true);
+  h.down();h.enable(false);h.up(180);
+  assert.deepEqual(h.actions,[]);
+  h.enable(true);h.teardown();h.swipe(80);
+  assert.deepEqual(h.actions,[]);
+});
+
+test('a selection left behind the nonselectable return overlay does not disable its swipe',()=>{
+  const h=harness('coach');h.selection(true);
+  h.down();h.move(140,110);h.up(140,110);
+  assert.deepEqual(h.actions,['dismiss']);
+  h.win.emit('blur',{});h.teardown();
 });
