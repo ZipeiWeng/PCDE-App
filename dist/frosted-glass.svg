@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="156" height="156" viewBox="0 0 156 156">
+  <defs>
+    <!-- Four microfacet refractions average the transmitted light. Unlike one
+         displaced image, the dense scatter softens detail without ragged edges. -->
+    <filter id="refraction" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".64 .71" numOctaves="2" seed="17" stitchTiles="stitch" result="etch"/>
+      <feColorMatrix in="etch" type="matrix" values="2.2 0 0 0 -.6 0 2.2 0 0 -.6 0 0 1 0 0 0 0 0 1 0" result="facets"/>
+      <feDisplacementMap in="SourceGraphic" in2="facets" scale="24" xChannelSelector="R" yChannelSelector="G" result="first"/>
+      <feDisplacementMap in="SourceGraphic" in2="facets" scale="-24" xChannelSelector="R" yChannelSelector="G" result="second"/>
+      <feDisplacementMap in="SourceGraphic" in2="facets" scale="24" xChannelSelector="G" yChannelSelector="B" result="third"/>
+      <feDisplacementMap in="SourceGraphic" in2="facets" scale="-24" xChannelSelector="G" yChannelSelector="B" result="fourth"/>
+      <feComposite in="first" in2="second" operator="arithmetic" k2=".5" k3=".5" result="pairA"/>
+      <feComposite in="third" in2="fourth" operator="arithmetic" k2=".5" k3=".5" result="pairB"/>
+      <feComposite in="pairA" in2="pairB" operator="arithmetic" k2=".5" k3=".5" result="scatter"/>
+      <feConvolveMatrix in="scatter" order="3" kernelMatrix="1 1 1 1 2 1 1 1 1" divisor="10" preserveAlpha="true" edgeMode="duplicate"/>
+    </filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".78" numOctaves="3" seed="11" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+  <rect width="156" height="156" filter="url(#grain)" opacity=".5"/>
+</svg>

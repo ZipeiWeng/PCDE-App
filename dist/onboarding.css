@@ -1,0 +1,76 @@
+/* A top-layer guide. App layout and geometry stay untouched. */
+.coach-layer{position:fixed;inset:auto;margin:0;padding:0;border:0;max-width:none;max-height:none;box-sizing:border-box;z-index:2147483647;background:transparent;color:#fffdf6;pointer-events:none;overflow:hidden;user-select:none;isolation:isolate;}
+.coach-layer[popover]:not(:popover-open){display:none;}.coach-layer::backdrop{background:transparent;pointer-events:none;}.coach-layer.coach-fallback{position:absolute;}
+.coach-focus{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;animation:coach-shade-in .35s ease both;}
+.coach-note{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;margin:0;padding:12px 4px;box-sizing:border-box;border:0;background:none;box-shadow:none;animation:coach-appear .4s cubic-bezier(.2,.7,.2,1) both;}
+.coach-note p,.coach-alert-title{margin:0;color:#fffdf6;font-family:ui-rounded,'SF Pro Rounded',system-ui,sans-serif;font-size:25px;font-weight:750;line-height:1.23;letter-spacing:-.6px;text-align:center;text-wrap:balance;text-shadow:0 2px 9px #08121d75;}
+.coach-alert-title{position:absolute;box-sizing:border-box;padding:0 4px;animation:coach-appear .4s cubic-bezier(.2,.7,.2,1) both;}
+.coach-next{pointer-events:auto;display:grid;place-items:center;flex:none;width:48px;height:48px;padding:11px;border:0;border-radius:50%;background:#bef3d0;box-shadow:0 4px 18px #07121c26;color:#203e34;cursor:pointer;transition:transform .2s ease,background .2s ease;}
+.coach-next:hover{background:#d4ffdf;transform:translateX(2px);}.coach-next:active{transform:scale(.93);}.coach-next .icon{width:26px;height:26px;stroke-width:2.8;}
+.coach-arrow{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 2px 3px #06111d66);}
+.coach-arrow>path{fill:none;stroke:#bef3d0;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;}.coach-arrow marker path{fill:none;stroke:#bef3d0;stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round;}
+.coach-gesture{position:absolute;transform:translate(-50%,-50%);pointer-events:none;}.coach-gesture .coach-visual{width:190px;height:145px;filter:drop-shadow(0 3px 9px #10202d55);}
+.coach-toolbar{position:absolute;inset:auto 24px max(12px, env(safe-area-inset-bottom));display:flex;gap:20px;align-items:center;justify-content:space-between;min-height:44px;color:#fffdf6;font-size:12px;line-height:1;}
+.coach-progress{flex:none;font-variant-numeric:tabular-nums;font-weight:750;}.coach-progress>span{font-weight:500;opacity:.68;}.coach-progress small{margin-left:8px;font-size:10px;font-weight:500;opacity:.72;}
+.coach-progress-track{height:3px;border-radius:3px;background:#ffffff30;flex:1;max-width:150px;overflow:hidden;}.coach-progress-track i{display:block;height:100%;border-radius:inherit;background:#bef3d0;transition:width .45s ease;}
+.coach-toolbar button{pointer-events:auto;min-height:44px;padding:6px 0 6px 10px;border:0;box-shadow:none;background:none;color:#fffdf6;font-size:13px;font-weight:650;cursor:pointer;}
+.coach-layer button:focus-visible{outline:3px solid #fffdf6;outline-offset:4px;}
+@keyframes coach-appear{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes coach-shade-in{from{opacity:0}to{opacity:1}}
+@media(max-width:350px),(max-height:650px){.coach-note p,.coach-alert-title{font-size:22px;}.coach-note{gap:13px;padding:8px 4px;}.coach-next{width:44px;height:44px;}.coach-toolbar{inset-inline:20px;}}
+@media(prefers-reduced-motion:reduce){.coach-note,.coach-alert-title,.coach-focus{animation:none;}.coach-next,.coach-progress-track i{transition:none;}}
+
+.coach-return-hint{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:#fffdf6d9;}.coach-return-hint .icon{width:16px;height:16px;stroke-width:2.5;}
+
+.coach-gesture .motion-phone,.coach-gesture .motion-phone-detail{display:none;}
+.coach-description{max-width:290px;color:#fffdf6e8;font-size:16px;font-weight:550;line-height:1.4;text-align:center;text-wrap:balance;text-shadow:0 2px 8px #08121d85;}
+.coach-next.is-labeled{width:auto;min-height:48px;height:auto;display:flex;gap:10px;padding:12px 20px;border-radius:28px;font-size:16px;font-weight:750;}
+.coach-next.is-labeled .icon{width:21px;height:21px;}
+.coach-secondary{pointer-events:auto;min-height:46px;padding:11px 20px;border:1px solid #ffffff7a;border-radius:26px;color:#fffdf6;background:#ffffff15;box-shadow:none;font-size:16px;font-weight:700;cursor:pointer;}
+.coach-toolbar [hidden]{display:none;}
+.coach-layer[data-step="score"] .coach-note{gap:11px;padding:0 4px;}
+.coach-layer[data-step="score"] .coach-note p{font-size:23px;}
+.coach-layer[data-step="score"] .coach-description{font-size:15px;}
+.coach-layer[data-step="score"] .coach-gesture{transform:translate(-50%,-25%);}
+.coach-layer[data-step="red-alert"][data-visual="search"][data-editing="true"] .coach-visual{display:none;}
+.coach-layer[data-step="red-alert"][data-visual="search"][data-editing="true"] .coach-note{gap:9px;}
+.coach-layer[data-step="red-alert"][data-visual="search"][data-editing="true"] .coach-note p{font-size:20px;}
+.coach-layer[data-step="red-alert"][data-visual="search"][data-editing="true"] .coach-description{font-size:14px;}
+/* Gesture practice must not turn a drag across page copy into text selection. */
+.app-shell[data-tour-step],.app-sheet:has(.coach-layer){user-select:none;-webkit-user-select:none;}
+.app-shell[data-tour-step] input,.app-shell[data-tour-step] textarea,.app-sheet:has(.coach-layer) input,.app-sheet:has(.coach-layer) textarea{user-select:text;-webkit-user-select:text;}
+
+.coach-layer[data-step="welcome"] .coach-note{gap:22px;}
+.coach-layer[data-step="welcome"] .coach-note p{font-size:clamp(42px,10vw,54px);font-weight:750;letter-spacing:-1.8px;}
+.coach-layer[data-step="welcome"] .coach-description{font-size:17px;font-weight:500;}
+.coach-layer[data-step="welcome"] .coach-next{margin-top:8px;}
+
+/* The real orb changes colour; one deliberate action advances each lesson. */
+.coach-interaction-hint{position:absolute;color:#bef3d0;font-family:ui-rounded,'SF Pro Rounded',system-ui,sans-serif;font-size:22px;font-weight:750;line-height:1.3;text-align:center;text-wrap:balance;text-shadow:0 2px 8px #08121d85;pointer-events:none;}
+
+/* The final page tour annotates real content instead of occupying its centre. */
+.coach-layer[data-step="explore"] .coach-note{gap:8px;padding:0 2px;}
+.coach-layer[data-step="explore"] .coach-note p{font-size:19px;line-height:1.3;letter-spacing:-.35px;}
+.coach-layer[data-step="explore"] .coach-description{font-size:14px;line-height:1.45;font-weight:550;max-width:260px;}
+.coach-layer[data-step="explore"] .coach-next.is-labeled{font-size:14px;min-height:44px;padding:11px 18px;margin-top:4px;}
+.coach-layer[data-step="explore"][data-visual="explore-page"] .coach-visual{display:none;}
+.coach-page-location{position:absolute;transform:translateX(-50%);white-space:nowrap;margin:0;padding:0;color:#fffdf6;font-size:12px;font-weight:650;text-align:center;line-height:1.4;text-shadow:0 2px 8px #08121d85;pointer-events:none;}
+.app-shell[data-tour-step="explore"] .page-dots [aria-current="page"]::before{content:'';position:absolute;left:50%;top:50%;width:19px;height:19px;border-radius:50%;transform:translate(-50%,-50%);border:1.5px solid #c7f4d6;box-shadow:0 0 12px 4px #b7f3cf5c;pointer-events:none;animation:coach-real-dot-pulse 2.2s ease-out infinite;}
+.app-shell[data-tour-step="explore"] .page-dots [aria-current="page"]::after{background:#c7f4d6;}
+@keyframes coach-real-dot-pulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.9}70%{transform:translate(-50%,-50%) scale(1.6);opacity:.15}}
+@media(prefers-reduced-motion:reduce){.app-shell[data-tour-step="explore"] .page-dots [aria-current="page"]::before{animation:none;}}
+
+.app-shell[data-tour-step="explore"] .page-dots button:not([aria-current="page"])::after{background:#e0e8e7;opacity:.9;}
+
+/* Fixed lower caption; the rest of Activity keeps its normal brightness. */
+.coach-layer[data-visual="activity-scroll"] .coach-note{min-height:108px;gap:9px;padding:9px 12px 9px 38px;animation:none;}
+.coach-layer[data-visual="activity-scroll"] .coach-note p{color:#fffdf6;font-size:21px;font-weight:750;line-height:1.25;letter-spacing:-.4px;text-shadow:0 2px 8px #08121d80;}
+.coach-layer[data-visual="activity-scroll"] .coach-description{color:#fffdf6;font-size:14px;line-height:1.45;font-weight:550;text-shadow:0 2px 8px #08121d80;max-width:100%;}
+.coach-scroll-cue{position:absolute;left:0;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:30px;height:30px;color:#bef3d0;}
+.coach-scroll-cue .icon{width:29px;height:29px;stroke-width:2.8;}
+.coach-layer[data-visual="activity-scroll"][data-reviewed="false"] .coach-scroll-cue .icon{transform:rotate(-90deg);animation:coach-scroll-down 1.8s ease-in-out infinite;}
+/* Extra end space lets the last record scroll clear of the fixed overlay;
+   no card, header or page-navigation position changes. */
+.app-shell[data-tour-step="explore"]:has(.coach-layer[data-visual="activity-scroll"]) #data-screen .screen-scroll{padding-bottom:var(--activity-coach-clearance,210px);}
+@keyframes coach-scroll-down{0%,100%{transform:translateY(-3px) rotate(-90deg)}60%{transform:translateY(3px) rotate(-90deg)}}
+@media(prefers-reduced-motion:reduce){.coach-layer[data-visual="activity-scroll"] .coach-scroll-cue .icon{animation:none;}}
