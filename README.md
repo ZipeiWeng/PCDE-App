@@ -4,8 +4,8 @@
 
 Complete source for the PawPrint pet-health app: wellness orb, activity and trends, health records, device connection and telemetry, AI companion, onboarding, hardware shop and simulated subscription checkout.
 
-- **Source snapshot:** Sites version 52, published 17 November 2026
-- **Source commit:** `0b8eee10057f0218cc77787cf0a1081d43788491`
+- **Source snapshot:** Sites version 53, published 17 November 2026
+- **Source commit:** `f555de246cda5eeac8611dcae803ab5b5216798b`
 - **Existing hosted app:** https://pawprint-health.zipeiweng453524.chatgpt.site/
 
 This is a source handoff. Copying the code to GitHub does not transfer the hosted database, production secrets, accounts or deployment configuration.
