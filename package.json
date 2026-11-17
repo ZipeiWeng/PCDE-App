@@ -1,0 +1,10 @@
+{
+  "name": "pawprint-health",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "build": "node scripts/build-worker.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
