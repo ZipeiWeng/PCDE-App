@@ -102,6 +102,16 @@
 .insight-possibilities ul { margin:8px 0; padding-left:17px; display:grid; gap:4px; }
 .insight-possibilities p { color:var(--muted); font-size:11px; }
 .insight-check-signs { display:block; margin:22px auto 0; font-size:12px; text-decoration:underline; text-underline-offset:4px; }
+/* A quiet reference after the current assessment, available on every visit. */
+.insight-colour-legend { margin:24px 4px 0; padding:18px 6px 4px; border-top:1px solid #66748129; text-align:center; }
+.insight-colour-legend h3 { margin:0 0 17px; color:var(--muted); font-size:13px; line-height:1.3; font-weight:600; letter-spacing:.1px; }
+.insight-colour-legend ul { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:0; padding:0; list-style:none; }
+.insight-colour-legend li { display:flex; flex-direction:column; align-items:center; gap:9px; }
+.insight-colour-legend strong { color:var(--ink); font-size:12px; line-height:1.35; font-weight:550; text-wrap:balance; }
+.insight-colour-orb { display:block; flex:none; width:37px; height:37px; border-radius:50%; border:1px solid #ffffffab; background:radial-gradient(circle at 31% 25%,#ffffffa6,transparent 52%),var(--colour-orb); box-shadow:inset 0 1px 3px #ffffff70,inset 0 -3px 7px #31425715,0 3px 9px #31425712; }
+.insight-colour-orb.is-red { --colour-orb:#d88b9b; }
+.insight-colour-orb.is-yellow { --colour-orb:#e8c979; }
+.insight-colour-orb.is-green { --colour-orb:#a9c66b; }
 .insight-sign-intro { margin:4px 0 19px; color:var(--muted); font-size:13px; line-height:1.55; }
 .insight-sign-options { display:grid; }
 .insight-sign-option { display:flex; align-items:flex-start; gap:13px; padding:17px 0; border-bottom:1px solid #66748129; cursor:pointer; }

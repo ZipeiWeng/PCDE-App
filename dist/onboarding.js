@@ -17,7 +17,7 @@ const escapeText = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;'
 export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection=()=>false,showPage,getPage,onStep=()=>{},onFinish=()=>{},restore}) {
   const doc=shell.ownerDocument,win=doc.defaultView;
   let active=false,id='score',returnPage=1,returnFocus,layer,host,target,note,arrow,frame,observer,mutation,oldDescription=null;
-  let trackUntil=0,preparing=false,rendering=false,entering=false,epoch=0,composing=false,layoutHeight=0,opened=false,needsConnection=false,interactionGuard,colourProgress=0,lastColourTap=-Infinity,clinicIntroduced=false,exploration=0,activityReviewed=false;
+  let trackUntil=0,preparing=false,rendering=false,entering=false,epoch=0,composing=false,layoutHeight=0,opened=false,needsConnection=false,interactionGuard,colourProgress=0,lastColourTap=-Infinity,exploration=0,activityReviewed=false;
   const expanded=new Map(),scrollPositions=new Map(),lang=()=>getLanguage()==='zh'?'zh':'en';
   const steps=()=>onboardingSteps(lang(),{needsConnection});
   const current=()=>{
@@ -28,10 +28,10 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
       return {...def,home:false,target:'#app-sheet .insight-data-summary',label:zh?'了解当前健康状态':'Understand their current health',description:zh?'查看读数变化、可能原因与下一步建议。':'See what changed, possible causes and what to do next.',visual:undefined,gesture:undefined,event:'continue',continueLabel:zh?'查看警报示例':'See alert example',dismiss:false};
     }
     if(id==='score'){const lesson=colourLesson(colourProgress,lang());return {...def,...lesson,event:lesson.complete?'health-open':'orb-tap',visual:lesson.complete?'tap':'colours',gesture:lesson.complete?'tap':undefined,dismiss:false};}
-    if(id==='red-alert'&&doc.querySelector('#app-sheet.insight-alert[open]'))return {...def,home:false,target:'[data-find-vet]',visual:undefined,gesture:'tap',event:'vet',separateAlertHeading:true};
-    if(id==='red-alert'&&doc.querySelector('#app-sheet[open] .vet-search-form'))return {...def,target:'.vet-search-form',label:zh?'查找附近医院':'Find a nearby clinic',description:zh?'输入城市或邮编，也可以直接使用示例。':'Enter a town or postcode, or use an example.',allow:'.vet-search-form',visual:'search',skipAction:'vet-example',skipLabel:zh?'使用示例':'Use example'};
-    if(id==='vet-results'&&clinicIntroduced)return {...def,target:'#sheet-close',label:zh?'向右滑，返回主页':'Swipe right to return home',description:zh?'也可以点右上角 × 返回。':'Or use × at the top right.',visual:'swipe',gesture:'return',dismiss:true};
-    if(id==='vet-results'&&doc.querySelector('#app-sheet.vet-detail-sheet'))return {...def,target:'.vet-clinic h3',label:zh?'医院详情，集中在这里':'Clinic details in one place',description:zh?'地址、电话和评价。可返回列表继续比较。':'Address, contact and reviews. Go back to compare clinics.',visual:'clinic',event:'continue',continueLabel:zh?'知道了':'Got it'};
+    if(id==='red-alert'&&doc.querySelector('#app-sheet.insight-alert[open]'))return def;
+    // Clinic browsing is optional, never another required lesson. The normal
+    // page stays visible with one small, fixed way to resume the tour.
+    if(id==='red-alert'&&doc.querySelector('#app-sheet.vet-finder-sheet[open],#app-sheet.vet-detail-sheet[open]'))return {...def,target:'#app-sheet',label:'',description:'',visual:'clinic-explore',gesture:undefined,continueLabel:zh?'继续引导':'Continue tour'};
     if(id==='device'&&!doc.querySelector('#settings-screen')?.hidden){
       const deviceBack={...back,skipEvent:undefined,skipLabel:undefined,continueLabel:zh?'体验健康示例':'Try the health demo'};
       if(doc.querySelector('#settings-screen[data-section="connect"]')){
@@ -105,7 +105,8 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
     const targetRect=id==='explore'&&def.visual==='explore-page'?localRect(target,base):focusRect(target,base),width=base.width,height=base.height;
     const editing=inputPolicy();layer.dataset.editing=String(editing.editing||editing.keyboardOpen);
     const endButton=layer.querySelector('[data-coach-skip]');if(endButton)endButton.hidden=!editing.showEndTour;
-    const centred=['welcome','swipe','clinic','connect','records','settings','activity','complete'].includes(def.visual)&&!['vet-results','device','card','profile'].includes(id);
+    const swipeReturn=def.visual==='swipe-return';
+    const centred=swipeReturn||['welcome','swipe','clinic','connect','records','settings','activity','complete'].includes(def.visual)&&!['vet-results','device','card','profile'].includes(id);
     const modalRect=host===shell?null:localRect(host,base);
     const compactModal=modalRect&&modalRect.height<height*.6;
     const r=compactModal&&!def.separateAlertHeading?modalRect:targetRect;
@@ -127,7 +128,13 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
     const measured=r||{left:width/2-12,right:width/2+12,top:height/2-12,bottom:height/2+12};
     let placement=centred?{left:(width-Math.min(300,width-44))/2,top:clamp(height*.46-noteHeight/2,70,Math.max(70,height-noteHeight-68)),width:Math.min(300,width-44)}:placeCoachNote({width,height,target:measured,noteWidth:Math.min(300,width-44),noteHeight,obstacles:editing.editing?[measured]:obstacles,gap:id==='score'?12:32,bottomInset:toolbar?height-toolbar.top+8:48,preferredSide:compactModal||id==='score'&&def.home?'below':def.home?'above':undefined});
     const dots=id==='explore'?localRect(doc.querySelector('.page-dots'),base):null;
-    if(def.separateAlertHeading){
+    if(['alert-intro','clinic-explore'].includes(def.visual)){
+      placement={left:(width-Math.min(300,width-44))/2,top:height-noteHeight-70,width:Math.min(300,width-44)};
+    }else if(swipeReturn){
+      // This instruction belongs to the viewport, not the close button or a
+      // scrolling clinic card. Keep the animation and caption centred together.
+      placement={left:(width-Math.min(300,width-44))/2,top:Math.max(20,(height-noteHeight)/2),width:Math.min(300,width-44)};
+    }else if(def.separateAlertHeading){
       const heading=layer.querySelector('.coach-alert-title');
       heading.style.width=`${Math.min(300,width-44)}px`;
       const alertPlacement=placeAlertCoach({width,height,target:targetRect||measured,headingHeight:heading.getBoundingClientRect().height,noteHeight,bottomInset:toolbar?height-toolbar.top+8:64});
@@ -153,11 +160,12 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
     const cutout=focus.querySelector('[data-focus-window]');
     const fr=r||measured,pad=10;
     cutout.setAttribute('rx',target?.id==='wellness-orb'?Math.min(fr.right-fr.left,fr.bottom-fr.top)/2+pad:24);
-    cutout.style.display=def.visual==='activity-scroll'||centred&&!def.dismiss?'none':'';
+    cutout.style.display=swipeReturn||['alert-intro','clinic-explore','activity-scroll'].includes(def.visual)||centred&&!def.dismiss?'none':'';
     const dock=focus.querySelector('#coach-activity-dock');
-    if(def.visual==='activity-scroll'){dock.setAttribute('y1',placement.top-28);dock.setAttribute('y2',height);}
-    layer.querySelector('[data-coach-shade]').setAttribute('fill',def.visual==='activity-scroll'?'url(#coach-activity-dock)':id==='welcome'?'#080c10':'#15212c');
-    layer.querySelector('[data-coach-shade]').setAttribute('fill-opacity',def.visual==='activity-scroll'?'1':id==='welcome'?'.65':def.visual==='explore-page'?'.4':centred?'.82':'.72');
+    const docked=['activity-scroll','alert-intro','clinic-explore'].includes(def.visual);
+    if(docked){dock.setAttribute('y1',placement.top-28);dock.setAttribute('y2',height);}
+    layer.querySelector('[data-coach-shade]').setAttribute('fill',docked?'url(#coach-activity-dock)':id==='welcome'?'#080c10':'#15212c');
+    layer.querySelector('[data-coach-shade]').setAttribute('fill-opacity',docked?'1':id==='welcome'?'.65':swipeReturn?'.72':def.visual==='explore-page'?'.4':centred?'.82':'.72');
     const gesture=layer.querySelector('.coach-gesture');
     if(gesture){Object.assign(gesture.style,{left:`${width/2}px`,top:`${clamp((fr.top+fr.bottom)/2,130,height-160)}px`});}
     for(const [key,value] of Object.entries({x:fr.left-pad,y:fr.top-pad,width:Math.max(0,fr.right-fr.left+pad*2),height:Math.max(0,fr.bottom-fr.top+pad*2)}))cutout.setAttribute(key,value);
@@ -168,7 +176,7 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
     if(location&&dots)Object.assign(location.style,{left:`${width/2}px`,top:`${dots.top-25}px`});
     layer.style.visibility=host.inert?'hidden':'';
     arrow.hidden=true;
-    if(!r||r.top>=height-30||r.bottom<=0||def.done||centred||def.visual==='explore-page'||def.visual==='activity-scroll'||def.visual==='tap'||editing.editing)return;
+    if(!r||r.top>=height-30||r.bottom<=0||def.done||centred||['alert-intro','clinic-explore','explore-page','activity-scroll','tap'].includes(def.visual)||editing.editing)return;
     const n={left:placement.left,right:placement.left+placement.width,top:placement.top,bottom:placement.top+noteHeight};
     const clipped={left:clamp(r.left,12,width-12),right:clamp(r.right,12,width-12),top:clamp(r.top,8,height-42),bottom:clamp(r.bottom,8,height-42)};
     let start,end;
@@ -187,6 +195,7 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
   function schedule(duration=0){if(Number.isFinite(duration)&&duration>0)trackUntil=Math.max(trackUntil,win.performance.now()+duration);if(frame==null)frame=win.requestAnimationFrame(tick);}
   function rememberScroll(node){if(node&&!scrollPositions.has(node))scrollPositions.set(node,{top:node.scrollTop,left:node.scrollLeft});}
   function prepareTarget(def){
+    if(def.visual==='clinic-explore')return;
     preparing=true;
     if(def.prepareSummary){const summary=doc.querySelector('[data-card-tab="overview"]');if(summary?.getAttribute('aria-selected')==='false')summary.click();}
     if(def.ensureOpen){const section=doc.querySelector(`#card-screen [data-summary-module="${def.ensureOpen}"]`);if(section){if(!expanded.has(section))expanded.set(section,section.open);section.open=true;}}
@@ -218,7 +227,7 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
     const route=steps(),text=def.label||coachCopy(id,lang()),visual=coachVisual(def.visual,lang()),stepIndex=route.findIndex(item=>item.id===id)+1;
     const buttonLabel=def.done?(def.doneLabel||(zh?'完成':'Done')):(def.continueLabel||(zh?'下一步':'Next'));
     const showHand=def.visual==='tap';
-    layer.innerHTML=`<svg class="coach-focus" aria-hidden="true"><defs><linearGradient id="coach-activity-dock" gradientUnits="userSpaceOnUse" x1="0" x2="0"><stop offset="0" stop-color="#15212c" stop-opacity="0"/><stop offset=".24" stop-color="#15212c" stop-opacity=".91"/><stop offset="1" stop-color="#15212c" stop-opacity=".96"/></linearGradient><filter id="coach-focus-feather"><feGaussianBlur stdDeviation="7"/></filter><mask id="coach-focus-mask"><rect width="100%" height="100%" fill="white"/><rect data-focus-window rx="24" fill="black" filter="url(#coach-focus-feather)"/><rect data-dots-window rx="24" fill="black" filter="url(#coach-focus-feather)" style="display:none"/></mask></defs><rect data-coach-shade width="100%" height="100%" fill="#15212c" fill-opacity=".72" mask="url(#coach-focus-mask)"/></svg><svg class="coach-arrow" aria-hidden="true"><defs><marker id="coach-arrowhead" markerWidth="16" markerHeight="16" refX="9" refY="8" orient="auto" markerUnits="userSpaceOnUse"><path d="m3 2 6 6-6 6"/></marker></defs><path marker-end="url(#coach-arrowhead)"/></svg>${showHand?`<div class="coach-gesture">${coachVisual('tap',lang())}</div>`:''}${def.hint?`<span class="coach-interaction-hint">${escapeText(def.hint)}</span>`:''}${def.separateAlertHeading?`<p class="coach-alert-title">${escapeText(text)}</p>`:''}<div class="coach-note" role="status" aria-live="polite">${def.visual==='activity-scroll'?`<span class="coach-scroll-cue" aria-hidden="true">${icon(activityReviewed?'arrow-right':'back')}</span>`:def.visual!=='tap'?visual:''}${def.separateAlertHeading?'':`<p id="coach-action-label">${escapeText(text)}</p>`}<span ${def.separateAlertHeading?'id="coach-action-label"':''} class="${def.showDescription?'coach-description':'sr-only'}">${escapeText(def.description)}</span>${def.event==='continue'||def.done?`<button type="button" class="coach-next is-labeled" ${def.done?'data-coach-done':'data-coach-continue'}>${escapeText(buttonLabel)}${icon(def.done?'check':'arrow-right')}</button>`:''}${def.skipAction||def.skipEvent?`<button type="button" class="coach-secondary" data-coach-secondary>${escapeText(def.skipLabel)}</button>`:''}</div>${id==='explore'?`<span class="coach-page-location">${zh?'大圆点 = 当前页':'Large dot = current page'}</span>`:''}<div class="coach-toolbar"><span class="coach-progress">${stepIndex}<span> / ${route.length}</span>${def.example?`<small>${zh?'演示':'Demo'}</small>`:''}</span><div class="coach-progress-track" aria-hidden="true"><i style="width:${stepIndex/route.length*100}%"></i></div><button type="button" data-coach-skip>${zh?'结束引导':'End tour'}</button></div>`;
+    layer.innerHTML=`<svg class="coach-focus" aria-hidden="true"><defs><linearGradient id="coach-activity-dock" gradientUnits="userSpaceOnUse" x1="0" x2="0"><stop offset="0" stop-color="#15212c" stop-opacity="0"/><stop offset=".24" stop-color="#15212c" stop-opacity=".91"/><stop offset="1" stop-color="#15212c" stop-opacity=".96"/></linearGradient><filter id="coach-focus-feather"><feGaussianBlur stdDeviation="7"/></filter><mask id="coach-focus-mask"><rect width="100%" height="100%" fill="white"/><rect data-focus-window rx="24" fill="black" filter="url(#coach-focus-feather)"/><rect data-dots-window rx="24" fill="black" filter="url(#coach-focus-feather)" style="display:none"/></mask></defs><rect data-coach-shade width="100%" height="100%" fill="#15212c" fill-opacity=".72" mask="url(#coach-focus-mask)"/></svg><svg class="coach-arrow" aria-hidden="true"><defs><marker id="coach-arrowhead" markerWidth="16" markerHeight="16" refX="9" refY="8" orient="auto" markerUnits="userSpaceOnUse"><path d="m3 2 6 6-6 6"/></marker></defs><path marker-end="url(#coach-arrowhead)"/></svg>${showHand?`<div class="coach-gesture">${coachVisual('tap',lang())}</div>`:''}${def.hint?`<span class="coach-interaction-hint">${escapeText(def.hint)}</span>`:''}${def.separateAlertHeading?`<p class="coach-alert-title">${escapeText(text)}</p>`:''}<div class="coach-note" role="status" aria-live="polite">${def.visual==='activity-scroll'?`<span class="coach-scroll-cue" aria-hidden="true">${icon(activityReviewed?'arrow-right':'back')}</span>`:def.visual!=='tap'?visual:''}${def.separateAlertHeading||def.visual==='clinic-explore'?'':`<p id="coach-action-label">${escapeText(text)}</p>`}<span ${def.separateAlertHeading?'id="coach-action-label"':''} class="${def.showDescription?'coach-description':'sr-only'}">${escapeText(def.description)}</span>${def.event==='continue'||def.done?`<button type="button" class="coach-next is-labeled" ${def.visual==='clinic-explore'?'id="coach-action-label"':''} ${def.done?'data-coach-done':'data-coach-continue'}>${escapeText(buttonLabel)}${icon(def.done?'check':'arrow-right')}</button>`:''}${def.skipAction||def.skipEvent?`<button type="button" class="coach-secondary" data-coach-secondary>${escapeText(def.skipLabel)}</button>`:''}</div>${id==='explore'?`<span class="coach-page-location">${zh?'大圆点 = 当前页':'Large dot = current page'}</span>`:''}<div class="coach-toolbar"><span class="coach-progress">${stepIndex}<span> / ${route.length}</span>${def.example?`<small>${zh?'演示':'Demo'}</small>`:''}</span><div class="coach-progress-track" aria-hidden="true"><i style="width:${stepIndex/route.length*100}%"></i></div><button type="button" data-coach-skip>${zh?'结束引导':'End tour'}</button></div>`;
     note=layer.querySelector('.coach-note');arrow=layer.querySelector('.coach-arrow');
     layer.querySelector('[data-coach-skip]').addEventListener('click',()=>{if(inputPolicy().showEndTour)finish('skip');});
     layer.querySelector('[data-coach-secondary]')?.addEventListener('click',()=>{doc.activeElement?.blur?.();const option=current();if(option.skipEvent)notify({type:option.skipEvent});else onStep({action:option.skipAction});});
@@ -231,7 +240,7 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
   }
   function enter(next){
     if(!active||!steps().some(item=>item.id===next))return;
-    id=next;if(id==='score'){colourProgress=0;lastColourTap=-Infinity;}if(id==='vet-results')clinicIntroduced=false;if(id==='explore'){exploration=0;activityReviewed=false;}opened=Boolean(steps().find(item=>item.id===id)?.startsOpen);const ticket=++epoch,def=current();entering=true;let ready;try{ready=onStep(def);}finally{entering=false;}
+    id=next;if(id==='score'){colourProgress=0;lastColourTap=-Infinity;}if(id==='explore'){exploration=0;activityReviewed=false;}opened=Boolean(steps().find(item=>item.id===id)?.startsOpen);const ticket=++epoch,def=current();entering=true;let ready;try{ready=onStep(def);}finally{entering=false;}
     if(!active||ticket!==epoch)return;render();
     if(ready&&typeof ready.then==='function')ready.then(()=>{if(active&&ticket===epoch)render();}).catch(()=>schedule());
   }
@@ -245,11 +254,8 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
       allowedSelectors=sheet?'':'#wellness-orb';
       if(sheet)scrollSelectors='#app-sheet';
     }else if(id==='red-alert'&&opened){
-      allowedSelectors=doc.querySelector('#app-sheet .vet-search-form')?'.vet-search-form':'[data-find-vet]';
-      scrollSelectors='#app-sheet';
-    }else if(id==='vet-results'){
-      allowedSelectors=clinicIntroduced?'#sheet-close':'[data-vet-detail],[data-vet-pin],[data-vet-back],[data-vet-condition],[data-detail-condition],.vet-map,.vet-clinic-map';
-      if(clinicIntroduced)gestureSelectors='#app-sheet';
+      allowedSelectors=def.visual==='clinic-explore'?'.vet-search-form,[data-use-location],[data-vet-detail],[data-vet-pin],[data-vet-back],[data-vet-condition],[data-detail-condition],.vet-map,.vet-clinic-map,#sheet-close':'[data-find-vet],#sheet-close';
+      gestureSelectors='#app-sheet';
       scrollSelectors='#app-sheet';
     }else if(id==='card'){
       allowedSelectors=opened?'#card-screen summary,[data-card-tab],#card-back':'#health-card-button';
@@ -260,7 +266,7 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
     }else if(id==='explore'){
       allowedSelectors=getPage()===0&&!activityReviewed?'':exploration>=2?'[data-page-step],[data-position]':`[data-page-step="-1"],[data-position="${exploration===0?0:2}"]`;gestureSelectors=def.navigation?'#page-track':'';scrollSelectors='#page-track .screen-scroll';
     }
-    return {allowedSelectors,gestureSelectors,scrollSelectors,scrollControlSelectors:id==='explore'?'#data-screen summary':'',scrollElement:id==='explore'&&getPage()===0?doc.querySelector('#data-screen .screen-scroll'):null,gestureControlSelectors:id==='explore'?'#wellness-orb':'',deniedSelectors:'a[href]',keyboardSelectors:'#card-screen [data-card-tab],.vet-map [tabindex],.vet-clinic-map [tabindex]',allowNavigationKeys:Boolean(def.navigation)};
+    return {allowedSelectors,gestureSelectors,scrollSelectors,overlaySwipe:def.visual==='swipe-return',scrollControlSelectors:id==='explore'?'#data-screen summary':'',scrollElement:id==='explore'&&getPage()===0?doc.querySelector('#data-screen .screen-scroll'):null,gestureControlSelectors:id==='explore'?'#wellness-orb':'',deniedSelectors:'a[href]',keyboardSelectors:'#card-screen [data-card-tab],.vet-map [tabindex],.vet-clinic-map [tabindex]',allowNavigationKeys:Boolean(def.navigation)};
   }
   function keydown(event){
     if(!active||event.key!=='Escape')return;
@@ -274,9 +280,6 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
   function toggle(event){if(active&&!preparing&&current().event==='module-toggle'&&event.target?.dataset?.summaryModule)notify({type:'module-toggle',module:event.target.dataset.summaryModule,open:event.target.open});}
   function notify(event){
     if(!active||entering)return;
-    if(id==='vet-results'&&opened&&!clinicIntroduced&&event.type==='continue'&&doc.querySelector('#app-sheet.vet-detail-sheet[open]')){
-      clinicIntroduced=true;render();return;
-    }
     if(id==='score'&&!colourLesson(colourProgress).complete){
       if(event.type!=='orb-tap')return;
       const nextProgress=advanceColourLesson(colourProgress,event.tone);
@@ -294,12 +297,12 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
     }
     const def=current();
     if(def.entry&&def.entry.type===event.type&&(!def.entry.section||def.entry.section===event.section))opened=true;
-    const next=nextTourStep(id,event,{opened,needsConnection,coloursComplete:colourLesson(colourProgress).complete,clinicIntroduced});
+    const next=nextTourStep(id,event,{opened,needsConnection,coloursComplete:colourLesson(colourProgress).complete});
     if(next!==id){
       if(def.continueAction){entering=true;try{onStep({action:def.continueAction});}finally{entering=false;}}
       enter(next);
     }else if((['score','red-alert'].includes(id)&&['health-open','health-alert'].includes(event.type))||(['device','profile'].includes(id)&&event.type==='settings')||(id==='card'&&event.type==='card-open'))render();
-    else if((['red-alert','vet-results'].includes(id)&&event.type==='vet')||(id==='explore'&&event.type==='page')||(id==='card'&&event.type==='sheet-close'))render(false);
+    else if((id==='red-alert'&&event.type==='vet')||(id==='explore'&&event.type==='page')||(id==='card'&&event.type==='sheet-close'))render(false);
     else schedule(350);
   }
   function activateOrb(event={}) {
@@ -339,5 +342,5 @@ export function createOnboarding({shell,getLanguage=()=> 'en',getNeedsConnection
     if(win.MutationObserver){mutation=new win.MutationObserver(records=>{if(records.some(record=>!record.target.closest?.('.coach-layer')))schedule();});mutation.observe(shell,{childList:true,subtree:true,attributes:true,attributeFilter:['open','hidden','inert']});const dialog=doc.querySelector('#app-sheet');if(dialog)mutation.observe(dialog,{childList:true,subtree:true,attributes:true,attributeFilter:['open','hidden','inert']});}
     showPage(1,false);enter('welcome');
   }
-  return {start,close,notify,activateOrb,get orbInstruction(){return active&&id==='score'&&!colourLesson(colourProgress).complete?colourLesson(colourProgress,lang()).hint:'';},canNavigateTo(index){return active&&id==='explore'&&canExplorePage(exploration,index,{activityReviewed});},get active(){return active;},get step(){return id;},get allowPageChange(){return active&&Boolean(current()?.navigation);},get allowDismiss(){return active&&Boolean(current()?.dismiss);},get allowSwipeDismiss(){return active&&id==='vet-results'&&opened&&clinicIntroduced;},get allowSettingsGestures(){return false;}};
+  return {start,close,notify,activateOrb,get orbInstruction(){return active&&id==='score'&&!colourLesson(colourProgress).complete?colourLesson(colourProgress,lang()).hint:'';},canNavigateTo(index){return active&&id==='explore'&&canExplorePage(exploration,index,{activityReviewed});},get active(){return active;},get step(){return id;},get allowPageChange(){return active&&Boolean(current()?.navigation);},get allowDismiss(){return active&&Boolean(current()?.dismiss);},get allowSwipeDismiss(){return active&&id==='red-alert'&&opened;},get allowSettingsGestures(){return false;}};
 }

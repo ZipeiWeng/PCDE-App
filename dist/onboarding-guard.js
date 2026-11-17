@@ -13,8 +13,9 @@ export function onboardingTargetAccess(target, policy = {}, layer) {
   const interactive = closest(target,controls);
   return {
     control,
-    // Coach artwork never starts an underlying app gesture.
-    gesture: !overlay && (!interactive || closest(target,policy.gestureControlSelectors)) && closest(target,policy.gestureSelectors),
+    // A dedicated swipe lesson may own its artwork/background contacts. This
+    // grants the coach's recognizer access, never an underlying app gesture.
+    gesture: overlay ? Boolean(policy.overlaySwipe && !interactive) : (!interactive || closest(target,policy.gestureControlSelectors)) && closest(target,policy.gestureSelectors),
     scroll: !overlay && closest(target,policy.scrollSelectors),
     overlay,
   };
@@ -23,7 +24,7 @@ export function onboardingTargetAccess(target, policy = {}, layer) {
 /**
  * getPolicy returns current scene selectors, not a cached step:
  * { allowedSelectors, deniedSelectors, gestureSelectors, gestureControlSelectors, scrollSelectors,
- *   keyboardSelectors, allowNavigationKeys }
+ *   keyboardSelectors, allowNavigationKeys, overlaySwipe }
  * Call mount once when the tour opens and destroy before restoring the app.
  * App gesture recognizers must also exclude .coach-layer and interactive
  * controls at pointerdown; their window capture handlers run before document.

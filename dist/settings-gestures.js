@@ -1,5 +1,6 @@
 // A completed horizontal gesture performs exactly one navigation action.
-const excluded = '.coach-layer,input,select,textarea,[contenteditable]:not([contenteditable="false"]),.settings-device-model,[data-no-settings-swipe]';
+const nativeExcluded = 'input,select,textarea,[contenteditable]:not([contenteditable="false"]),.settings-device-model,[data-no-settings-swipe]';
+const excluded = `.coach-layer,${nativeExcluded}`;
 
 const consumedUps = new WeakSet();
 
@@ -26,12 +27,15 @@ function shieldReleaseClick(win) {
   timer?.unref?.();
 }
 
-function installHorizontalGesture(root, { isEnabled, captureState, onSwipe, directions = ['left', 'right'], allowVerticalLiquid = false, threshold = 44, intentThreshold = 20, axisRatio = 1.35 }) {
+function installHorizontalGesture(root, { isEnabled, captureState, onSwipe, directions = ['left', 'right'], allowVerticalLiquid = false, threshold = 44, intentThreshold = 20, axisRatio = 1.35, coachSurface = false, verticalIntentThreshold = 12, verticalAxisRatio = 1 }) {
   const doc = root.ownerDocument || document;
   const win = doc.defaultView || window;
   const pointers = new Set();
   let start = null;
   const hasSelection = () => {
+    // This nonselectable coach surface sits above the page. A stale selection
+    // behind it must not disable the only taught return gesture.
+    if (coachSurface) return false;
     const selection = doc.getSelection?.();
     return selection && !selection.isCollapsed && String(selection).length > 0;
   };
@@ -43,7 +47,7 @@ function installHorizontalGesture(root, { isEnabled, captureState, onSwipe, dire
   function down(event) {
     if (!isEnabled() || pointers.size > 1 || event.isPrimary === false ||
         (event.pointerType === 'mouse' && event.button !== 0) ||
-        event.target.closest?.(excluded) || hasSelection()) return;
+        event.target.closest?.(coachSurface ? nativeExcluded : excluded) || hasSelection()) return;
     const liquid = event.target.closest?.('[data-liquid-ready]');
     const verticalLiquid = liquid && allowVerticalLiquid && liquid.getAttribute?.('data-liquid-drag-axis') === 'y';
     // Sidebar choices intentionally support horizontal collapse gestures.
@@ -60,7 +64,7 @@ function installHorizontalGesture(root, { isEnabled, captureState, onSwipe, dire
     if (!isEnabled() || hasSelection()) { cancel(); return; }
     const dx = event.clientX - start.x, dy = event.clientY - start.y;
     if (!start.axis) {
-      if (Math.abs(dy) > 12 && Math.abs(dy) >= Math.abs(dx)) start.axis = 'vertical';
+      if (Math.abs(dy) > verticalIntentThreshold && Math.abs(dy) >= Math.abs(dx) * verticalAxisRatio) start.axis = 'vertical';
       else if (Math.abs(dx) >= intentThreshold && Math.abs(dx) > Math.abs(dy) * axisRatio) start.axis = 'horizontal';
     }
     if (start.axis === 'horizontal' && directions.includes(dx > 0 ? 'right' : 'left') && event.cancelable) event.preventDefault();
@@ -124,4 +128,21 @@ export function installSettingsGestures(root, {
 
 export function installSwipeDismiss(root, { isEnabled = () => true, onDismiss, directions }) {
   return installHorizontalGesture(root, { isEnabled, onSwipe: onDismiss, directions });
+}
+
+// The dedicated return lesson owns the entire coach surface, including its
+// illustration and text. It must not depend on an underlying map/card accepting
+// the contact. Ordinary coach controls and all other app gestures stay excluded.
+export function installCoachSwipeDismiss(root, { isEnabled = () => false, onDismiss }) {
+  return installHorizontalGesture(root, {
+    isEnabled,
+    onSwipe: onDismiss,
+    directions: ['right'],
+    coachSurface: true,
+    threshold: 32,
+    intentThreshold: 10,
+    axisRatio: 1.15,
+    verticalIntentThreshold: 18,
+    verticalAxisRatio: 1.2,
+  });
 }

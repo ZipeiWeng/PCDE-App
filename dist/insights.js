@@ -174,6 +174,16 @@ function dataSummary(readings) {
   }).filter(Boolean).join(' · ');
 }
 
+function colourLegend(language = 'en') {
+  const zh = language === 'zh';
+  const items = [
+    ['red', zh ? '红色' : 'Red', zh ? '立即求助' : 'Get help now'],
+    ['yellow', zh ? '黄色' : 'Yellow', zh ? '关注变化' : 'Check changes'],
+    ['green', zh ? '绿色' : 'Green', zh ? '接近平常' : 'Usual pattern'],
+  ];
+  return `<section class="insight-colour-legend" aria-labelledby="insight-colours-title"><h3 id="insight-colours-title">${zh ? '水球颜色含义' : 'Meaning of Colours'}</h3><ul>${items.map(([colour, name, meaning]) => `<li><span class="insight-colour-orb is-${colour}" aria-hidden="true"></span><span class="sr-only">${name}: </span><strong>${meaning}</strong></li>`).join('')}</ul></section>`;
+}
+
 export function initInsights({ getSnapshot, getStore, getAccount = () => null, openCard, onConnect, isTutorial = () => false, canDismiss = () => true, onViewChange = () => {}, onVetViewChange = () => {} }) {
   const vets = initVetFinder({ getAccount, isTutorial, canDismiss, onViewChange: onVetViewChange });
   let removeSwipeDismiss = null;
@@ -229,7 +239,10 @@ export function initInsights({ getSnapshot, getStore, getAccount = () => null, o
     } else {
       body = `<div class="insight-panels"><section class="glass insight-panel insight-risk">${illustration(insight.illustration)}<p class="insight-kicker">Potential risk · keep an eye on it</p><h3>${escapeHTML(insight.title)}</h3><p>${escapeHTML(insight.risk)}</p><p class="insight-outlook">${escapeHTML(insight.outlook)}</p><div class="insight-data-summary"><strong>What changed</strong><p>${escapeHTML(dataSummary(insight.relevant))}</p></div>${readingRows(insight.relevant)}${sourceMarkup(insight.source, insight.secondarySource)}</section><section class="glass insight-panel insight-actions"><h3>What to do next</h3><ol>${insight.actions.map(([title, detail]) => `<li><strong>${escapeHTML(title)}</strong><p>${escapeHTML(detail)}</p></li>`).join('')}</ol><button class="text-button" data-open-card>View health card ${icon('arrow-right')}</button></section></div>`;
     }
-    if (!alarm) body += '<button class="text-button insight-check-signs" data-check-signs>Check urgent signs</button>';
+    if (!alarm) {
+      body += '<button class="text-button insight-check-signs" data-check-signs>Check urgent signs</button>';
+      body += colourLegend(getStore()?.preferences?.language);
+    }
     body += `<p class="insight-limit">${simulated}Guidance, not a diagnosis or a validated disease prediction. AI and estimates can be wrong.</p>`;
     const dialog = openSheet({
       title: alarm ? 'Health alert' : 'Current health',

@@ -14,6 +14,17 @@
 .motion-page path{fill:none;stroke:#fffdf68f;}
 .swipe-direction{stroke:#bef3d0;stroke-width:4.5;opacity:.9;}
 .is-swipe .gesture-hand{animation:coach-swipe-hand 3s cubic-bezier(.4,0,.2,1) infinite;}
+/* One panel follows the hand right, revealing home. Reset only while hidden. */
+.return-home-frame{fill:#ffffff0a;stroke:#fffdf655;stroke-width:2;}
+.return-home-icon{stroke:#bef3d0;stroke-width:2.5;animation:coach-return-home 2.8s ease infinite;}
+.return-sheet{fill:#63757e;stroke:#fffdf6d9;stroke-width:2.7;animation:coach-return-sheet 2.8s cubic-bezier(.3,0,.2,1) infinite;}
+.return-sheet path{fill:none;stroke:#fffdf68c;stroke-width:2;}
+.return-trail{stroke:#bef3d0;stroke-width:4;}
+.is-swipe-return .gesture-hand{animation:coach-return-hand 2.8s cubic-bezier(.3,0,.2,1) infinite;}
+@keyframes coach-return-hand{0%{transform:translate(-43px,20px);opacity:0}10%,20%{transform:translate(-43px,20px);opacity:1}65%,82%{transform:translate(22px,20px);opacity:1}92%{transform:translate(22px,20px);opacity:0}93%,100%{transform:translate(-43px,20px);opacity:0}}
+@keyframes coach-return-sheet{0%,20%{transform:translateX(0);opacity:1}65%,82%{transform:translateX(65px);opacity:.15}92%{transform:translateX(65px);opacity:0}93%{transform:translateX(0);opacity:0}100%{transform:translateX(0);opacity:1}}
+@keyframes coach-return-home{0%,20%{opacity:.15}65%,90%{opacity:1}100%{opacity:.15}}
+@media(prefers-reduced-motion:reduce){.is-swipe-return .return-sheet{transform:translateX(30px);opacity:.35;}.is-swipe-return .gesture-hand{transform:translate(-8px,20px);}.is-swipe-return .return-home-icon{opacity:1;}}
 .motion-dots{fill:#fffdf675;stroke:none;}.motion-dots circle{transform-box:fill-box;transform-origin:center;}.motion-dots circle:first-child{animation:coach-dot-first 2.8s ease infinite;}.motion-dots circle:nth-child(2){animation:coach-dot-second 2.8s ease infinite;}
 .fold-heading{fill:#ffffff28;stroke:#fffdf6a0;stroke-width:2;}.fold-heading-line{stroke:#fffdf6;stroke-width:3;}.fold-chevron{stroke:#bef3d0;stroke-width:3;transform-origin:147px 34px;animation:coach-fold-chevron 3s ease-in-out infinite;}
 .fold-records{fill:#ffffff16;stroke:#fffdf660;stroke-width:2;transform-origin:100px 50px;animation:coach-fold-content 3s cubic-bezier(.4,0,.2,1) infinite;}.fold-records path{fill:none;stroke:#fffdf690;}

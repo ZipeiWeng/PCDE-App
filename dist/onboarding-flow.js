@@ -6,7 +6,7 @@ const backHome = (type) => ({
   continueAction:'home-good',dismiss:true,requiresOpen:true,acceptEvents:[{type}],
 });
 
-// Eight scenes. Home entrances and their contents are one scene, so opening
+// Seven scenes. Home entrances and their contents are one scene, so opening
 // something never skips its explanation or adds another mandatory tutorial step.
 export const onboardingFlow = [
   step('welcome',0,'#app-workspace','Welcome!','欢迎！',
@@ -23,13 +23,10 @@ export const onboardingFlow = [
     {action:'set-good',home:true,visual:'colours',event:'continue',gesture:'tap',example:true,
       entry:{type:'health-open'},requiresOpen:true,dismiss:false}),
   step('red-alert',2,'[data-find-vet]','Yellow or red brings an alert','水球变黄或变红时，会弹出提醒',
-    'For urgent alerts, tap Contact nearest vet.','遇到紧急预警，点 Contact nearest vet 寻求帮助。',
-    {action:'red-alert',home:false,event:'vet',view:'results',entry:{type:'health-alert'},requiresOpen:true,
-      startsOpen:true,gesture:'tap',example:true}),
-  step('vet-results',2,'.vet-results-list','Compare nearby clinics','比较附近医院',
-    'See the map, distance and ratings. Tap a clinic for contact details.','查看地图、距离与评分。点一家医院，查看联系方式。',
-    {event:'sheet-close',continueAction:'home-good',requiresOpen:true,dismiss:false,startsOpen:true,visual:'clinic',example:true,
-      allow:'.vet-results-list,.vet-map,.vet-condition,[data-vet-back],[data-detail-condition],.vet-clinic-map'}),
+    'Contact nearest vet opens nearby clinics.','Contact nearest vet 可打开附近医院。',
+    {...backHome('sheet-close'),action:'red-alert',home:false,entry:{type:'health-alert'},
+      startsOpen:true,visual:'alert-intro',example:true,showDescription:false,
+      continueLabel:'Got it',continueLabelZh:'知道了'}),
   step('card',4,'#health-card-button','Open your pet’s health card','打开宠物健康档案',
     'The card button is next to Device.','健康卡入口就在设备按钮旁边。',
     {...backHome('card-close'),home:true,gesture:'tap',entry:{type:'card-open'},
@@ -64,7 +61,6 @@ export function nextTourStep(id,event={},scene={}) {
   const current=onboardingSteps('en',scene).find(item=>item.id===id);
   if(current?.skipEvent&&current.skipEvent===event.type)return current.next||id;
   if(id==='score'&&scene.coloursComplete!==true)return id;
-  if(id==='vet-results'&&scene.clinicIntroduced!==true)return id;
   if(!current||current.requiresOpen&&scene.opened!==true)return id;
   const alternative=current.acceptEvents?.find(expected=>matches(expected,event));
   if(alternative)return alternative.next||current.next||id;

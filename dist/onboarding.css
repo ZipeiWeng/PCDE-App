@@ -1,4 +1,15 @@
 /* A top-layer guide. App layout and geometry stay untouched. */
+.coach-layer[data-visual="alert-intro"] .coach-note{gap:14px;}
+.coach-layer[data-visual="alert-intro"] .coach-note p{font-size:22px;}
+.coach-layer[data-visual="clinic-explore"] .coach-note{padding:0;gap:0;}
+.coach-layer[data-visual="clinic-explore"] .coach-next{font-size:14px;padding:11px 18px;min-height:44px;}
+/* The return lesson owns the entire gesture surface, including the map below. */
+.coach-layer[data-visual="swipe-return"]{pointer-events:auto;touch-action:none;cursor:grab;}
+.coach-layer[data-visual="swipe-return"]:active{cursor:grabbing;}
+.coach-layer[data-visual="swipe-return"] .coach-note{gap:22px;pointer-events:none;}
+.coach-layer[data-visual="swipe-return"] .coach-note p{font-size:clamp(25px,6.6vw,29px);max-width:280px;}
+.coach-layer[data-visual="swipe-return"] .coach-visual{width:230px;height:173px;}
+.coach-layer[data-visual="swipe-return"] .coach-arrow{display:none;}
 .coach-layer{position:fixed;inset:auto;margin:0;padding:0;border:0;max-width:none;max-height:none;box-sizing:border-box;z-index:2147483647;background:transparent;color:#fffdf6;pointer-events:none;overflow:hidden;user-select:none;isolation:isolate;}
 .coach-layer[popover]:not(:popover-open){display:none;}.coach-layer::backdrop{background:transparent;pointer-events:none;}.coach-layer.coach-fallback{position:absolute;}
 .coach-focus{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;animation:coach-shade-in .35s ease both;}
