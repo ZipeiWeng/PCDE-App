@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1794432421479,
+      "tag": "0000_pawprint_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794450000000,
+      "tag": "0001_pawprint_test_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794614400000,
+      "tag": "0002_pawprint_health_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794700800000,
+      "tag": "0003_pawprint_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794787200000,
+      "tag": "0004_pawprint_shop",
+      "breakpoints": true
+    }
+  ]
+}
