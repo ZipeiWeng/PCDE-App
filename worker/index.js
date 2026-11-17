@@ -543,13 +543,13 @@ function createVetLookup(fetchImpl, now) {
       return [{type,id:p.osm_id,lat:coords[1],lon:coords[0],tags:{...extra,amenity:'veterinary',name:p.name,'addr:housenumber':p.housenumber,'addr:street':p.street,'addr:city':p.city,'addr:postcode':p.postcode}}];
     });
   }
-  async function clinics(center) {
-    const key=`${center.lat.toFixed(3)},${center.lon.toFixed(3)}`;
+  async function clinics(center,radiusKm) {
+    const key=`${center.lat.toFixed(5)},${center.lon.toFixed(5)}:${radiusKm}`;
     const hit=cached(cache,key);if(hit)return hit;
     if(pending.has(key))return pending.get(key);
     const task=(async()=>{
       const {lat,lon}=center;
-      const query=`[out:json][timeout:6];nwr["amenity"="veterinary"](around:15000,${lat.toFixed(5)},${lon.toFixed(5)});out center tags;`;
+      const query=`[out:json][timeout:6];nwr["amenity"="veterinary"](around:${radiusKm*1000},${lat.toFixed(5)},${lon.toFixed(5)});out center tags;`;
       const europe=lat>=34&&lat<=72&&lon>=-25&&lon<=45;
       // dresel and Private.coffee explicitly welcome small project use. Avoid
       // the overloaded main Overpass instance and its AI-hosted-app restriction.
@@ -564,7 +564,7 @@ function createVetLookup(fetchImpl, now) {
       }
       try {
         // Photon documents filtered reverse search for nearest amenities.
-        const data=await providerJson(`https://photon.komoot.io/reverse?${new URLSearchParams({lat:lat.toFixed(5),lon:lon.toFixed(5),radius:'15',osm_tag:'amenity:veterinary',limit:'30',lang:'en'})}`,6000);
+        const data=await providerJson(`https://photon.komoot.io/reverse?${new URLSearchParams({lat:lat.toFixed(5),lon:lon.toFixed(5),radius:String(radiusKm),osm_tag:'amenity:veterinary',limit:'50',lang:'en'})}`,6000);
         const resultElements=photonElements(data);
         keep(cache,key,resultElements,now()+10*60000);return resultElements;
       } catch {
@@ -576,6 +576,8 @@ function createVetLookup(fetchImpl, now) {
   return async request => {
     const params=new URL(request.url).searchParams;
     const query=params.get('q')??params.get('query');
+    const radiusText=params.get('radiusKm'),radiusKm=radiusText===null?10:Number(radiusText);
+    if(!['1','5','10','25'].includes(radiusText??'10'))throw new RequestError(400,'invalid_radius','Choose a search range of 1, 5, 10 or 25 km.');
     let center;
     if(query!==null){
       if(query.trim().length<2||query.trim().length>120||/[\u0000-\u001f\u007f]/.test(query))throw new RequestError(400,'invalid_search','Enter a town or postcode, using 2–120 characters.');
@@ -586,19 +588,22 @@ function createVetLookup(fetchImpl, now) {
       if(!latText?.trim()||!lonText?.trim()||!validPoint(center))throw new RequestError(400,'invalid_location','Choose a valid location to find nearby vets.');
       budget();
     }
-    const elements=await clinics(center),seen=new Set();
-    const vets=elements.flatMap(item=>{
+    const elements=await clinics(center,radiusKm),seen=new Set();
+    const candidates=elements.flatMap(item=>{
       const tags=isObject(item.tags)?item.tags:{};
       const p={lat:item.lat??item.center?.lat,lon:item.lon??item.center?.lon};
       if(tags.amenity!=='veterinary'||!validPoint(p)||!['node','way','relation'].includes(item.type)||!/^\d{1,20}$/.test(String(item.id)))return [];
+      // Filter against exact distance before rounding the display value.
+      const distance=distanceKm(center,p);if(distance>radiusKm)return [];
       const name=safeText(tags.name||tags['name:en'],140)||'Veterinary practice';
       const duplicate=`${name.toLowerCase()}:${p.lat.toFixed(4)}:${p.lon.toFixed(4)}`;
       if(seen.has(duplicate))return [];seen.add(duplicate);
       const street=[tags['addr:housenumber'],tags['addr:street']].filter(v=>typeof v==='string').join(' ');
       const address=safeText(tags['addr:full']||[street,tags['addr:city'],tags['addr:postcode']].filter(v=>typeof v==='string'&&v).join(', '),300)||null;
-      return [{id:`${item.type}/${item.id}`,name,...p,distanceKm:Math.round(distanceKm(center,p)*10)/10,address,phone:safeText(tags.phone||tags['contact:phone'],80)||null,website:safeWebsite(tags.website||tags['contact:website']),openingHours:safeText(tags.opening_hours,250)||null,emergency:['yes','no'].includes(tags.emergency)?tags.emergency:null,rating:null,reviewCount:null}];
-    }).filter(vet=>vet.distanceKm<=15).sort((a,b)=>a.distanceKm-b.distanceKm).slice(0,8);
-    return json({center,vets,source:'OpenStreetMap',attribution:'© OpenStreetMap contributors',radiusKm:15});
+      return [{id:`${item.type}/${item.id}`,name,...p,distanceKm:Math.round(distance*1000)/1000,address,phone:safeText(tags.phone||tags['contact:phone'],80)||null,website:safeWebsite(tags.website||tags['contact:website']),openingHours:safeText(tags.opening_hours,250)||null,emergency:['yes','no'].includes(tags.emergency)?tags.emergency:null,rating:null,reviewCount:null}];
+    }).sort((a,b)=>a.distanceKm-b.distanceKm);
+    const vets=candidates.slice(0,40);
+    return json({center,vets,source:'OpenStreetMap',attribution:'© OpenStreetMap contributors',radiusKm,truncated:candidates.length>40});
   };
 }
 

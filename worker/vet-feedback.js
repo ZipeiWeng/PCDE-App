@@ -1,6 +1,6 @@
 // Owner follow-ups are not verified clinical outcomes. This service deliberately
 // keeps test/demo sessions out of public counts and never infers a cure rate.
-export const VET_FEEDBACK_CONDITIONS = ['general','mobility','ear','skin','digestive','dental','respiratory','other'];
+export const VET_FEEDBACK_CONDITIONS = ['general','vaccination','mobility','ear','skin','digestive','dental','respiratory','other'];
 const VET_FEEDBACK_OUTCOMES = ['recovered','improved','unchanged','worse','ongoing'];
 const VET_FEEDBACK_MINIMUM_SAMPLE = 5;
 const vetFeedbackSchemas = new WeakMap();
@@ -65,21 +65,30 @@ function vetFeedbackRecovery(completedCount=0,recoveredCount=0) {
   return {percent:completedCount>=VET_FEEDBACK_MINIMUM_SAMPLE?Math.round(recoveredCount/completedCount*100):null,recoveredCount,completedCount,minimumSample:VET_FEEDBACK_MINIMUM_SAMPLE};
 }
 
+function vetFeedbackConditionRating(condition,ratingTotal=0,reviewCount=0,positiveCount=0) {
+  return {condition,rating:reviewCount?Math.round(ratingTotal/reviewCount*10)/10:null,reviewCount,positiveCount,positivePercent:reviewCount>=VET_FEEDBACK_MINIMUM_SAMPLE?Math.round(positiveCount/reviewCount*100):null,minimumSample:VET_FEEDBACK_MINIMUM_SAMPLE};
+}
+
 export function summarizeVetFeedback(rows,ids,condition='all') {
-  const summaries=Object.fromEntries(ids.map(id=>[id,{rating:null,reviewCount:0,reportedRecovery:vetFeedbackRecovery(),conditionRecovery:{condition,...vetFeedbackRecovery()}}]));
-  const totals={};
+  const summaries=Object.fromEntries(ids.map(id=>[id,{rating:null,reviewCount:0,reportedRecovery:vetFeedbackRecovery(),conditionRecovery:{condition,...vetFeedbackRecovery()},conditionRating:vetFeedbackConditionRating(condition)}]));
+  const totals={},conditionTotals={};
   for(const row of rows){
     const summary=summaries[row.clinic_id];if(!summary)continue;
     summary.reviewCount+=Number(row.review_count)||0;
     totals[row.clinic_id]=(totals[row.clinic_id]||0)+(Number(row.rating_total)||0);
     summary.reportedRecovery.completedCount+=Number(row.completed_count)||0;
     summary.reportedRecovery.recoveredCount+=Number(row.recovered_count)||0;
-    if(condition==='all'||row.condition_key===condition){summary.conditionRecovery.completedCount+=Number(row.completed_count)||0;summary.conditionRecovery.recoveredCount+=Number(row.recovered_count)||0;}
+    if(condition==='all'||row.condition_key===condition){
+      summary.conditionRecovery.completedCount+=Number(row.completed_count)||0;summary.conditionRecovery.recoveredCount+=Number(row.recovered_count)||0;
+      summary.conditionRating.reviewCount+=Number(row.review_count)||0;summary.conditionRating.positiveCount+=Number(row.positive_count)||0;
+      conditionTotals[row.clinic_id]=(conditionTotals[row.clinic_id]||0)+(Number(row.rating_total)||0);
+    }
   }
   for(const [id,summary] of Object.entries(summaries)){
     if(summary.reviewCount)summary.rating=Math.round(totals[id]/summary.reviewCount*10)/10;
     summary.reportedRecovery=vetFeedbackRecovery(summary.reportedRecovery.completedCount,summary.reportedRecovery.recoveredCount);
     summary.conditionRecovery={condition,...vetFeedbackRecovery(summary.conditionRecovery.completedCount,summary.conditionRecovery.recoveredCount)};
+    summary.conditionRating=vetFeedbackConditionRating(condition,conditionTotals[id]||0,summary.conditionRating.reviewCount,summary.conditionRating.positiveCount);
   }
   return summaries;
 }
@@ -98,6 +107,7 @@ export function createVetFeedbackHandler({getAccountId=async()=>null,now=Date.no
   async function summaries(db,ids,condition) {
     const placeholders=ids.map(()=>'?').join(',');
     const result=await db.prepare(`SELECT clinic_id,condition_key,COUNT(*) AS review_count,SUM(rating) AS rating_total,
+      SUM(CASE WHEN rating>=4 THEN 1 ELSE 0 END) AS positive_count,
       SUM(CASE WHEN outcome='ongoing' THEN 0 ELSE 1 END) AS completed_count,
       SUM(CASE WHEN outcome='recovered' THEN 1 ELSE 0 END) AS recovered_count
       FROM vet_feedback WHERE clinic_id IN (${placeholders}) GROUP BY clinic_id,condition_key`).bind(...ids).all();
@@ -106,7 +116,8 @@ export function createVetFeedbackHandler({getAccountId=async()=>null,now=Date.no
   async function detail(db,clinicId,condition,id) {
     const all=await summaries(db,[clinicId],condition);
     const columns='rating,condition_key,outcome,visit_date,display_name,comment,created_at,updated_at';
-    const reviews=await db.prepare(`SELECT ${columns} FROM vet_feedback WHERE clinic_id=? ORDER BY updated_at DESC,created_at DESC LIMIT 20`).bind(clinicId).all();
+    const reviewParams=condition==='all'?[clinicId]:[clinicId,condition];
+    const reviews=await db.prepare(`SELECT ${columns} FROM vet_feedback WHERE clinic_id=?${condition==='all'?'':' AND condition_key=?'} ORDER BY updated_at DESC,created_at DESC LIMIT 20`).bind(...reviewParams).all();
     const own=id?await db.prepare(`SELECT ${columns} FROM vet_feedback WHERE clinic_id=? AND account_id=?`).bind(clinicId,id).first():null;
     return {available:true,clinicId,summary:all[clinicId],reviews:(reviews.results||[]).map(vetFeedbackPublicReview),ownReview:vetFeedbackPublicReview(own),canReview:Boolean(id)};
   }
@@ -122,7 +133,7 @@ export function createVetFeedbackHandler({getAccountId=async()=>null,now=Date.no
         const clinicId=url.searchParams.get('clinic');
         if(clinicId!==null){if(!vetFeedbackClinicId(clinicId))throw new VetFeedbackError(400,'invalid_clinic','Choose a listed clinic.');return vetFeedbackJSON(await detail(env.AUTH_DB,clinicId,condition,id));}
         const ids=[...new Set((url.searchParams.get('ids')||'').split(','))];
-        if(!ids.length||ids.length>8||ids.some(item=>!vetFeedbackClinicId(item)))throw new VetFeedbackError(400,'invalid_clinics','Choose between one and eight clinics.');
+        if(!ids.length||ids.length>40||ids.some(item=>!vetFeedbackClinicId(item)))throw new VetFeedbackError(400,'invalid_clinics','Choose between one and forty clinics.');
         return vetFeedbackJSON({available:true,summaries:await summaries(env.AUTH_DB,ids,condition),canReview:Boolean(id)});
       }
       if(!id)throw new VetFeedbackError(401,'registered_account_required','Sign in to a registered Pawprint account to publish feedback. Test accounts cannot publish reviews.');
