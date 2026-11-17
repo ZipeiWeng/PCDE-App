@@ -350,6 +350,7 @@ function renderHome() {
   const waitingLabel=readings?(zh?'已收到读数 · 暂无健康评分':'Readings received · no health score yet'):emptyReadingLabel({connected:snapshot.connected,zh});
   $('wellness-orb').setAttribute('aria-label',available?`Wellness ${snapshot.score} out of 100${simulated?', demo':''}. ${state.label}. ${guide.orbInstruction||'Tap for details.'}`:snapshot.status==='alert'?'Urgent signs reported. Get veterinary help now. Tap for details.':`${waitingLabel}. Tap for details.`);
   put('status-label', !available&&snapshot.status!=='alert'?waitingLabel:state.label);
+  $('find-clinic-button').querySelector('span').textContent=zh?'查找医院':'Find a clinic';
   let actions=$('home-setup-actions');
   if(!actions){actions=document.createElement('div');actions.id='home-setup-actions';actions.className='home-setup-actions';document.querySelector('.orb-wrap').append(actions);}
   actions.innerHTML=!readings&&snapshot.status!=='alert'?`<button class="button glass" data-home-connect>${icon('device')}${zh?'连接设备':'Connect collar'}</button><button class="home-demo-link" data-home-demo>${zh?'先体验示例':'Try a demo'}</button>`:testScenarios.active(activeAccount)?`<button class="home-demo-link" data-home-exit-demo>${zh?'返回已保存的数据':'Return to saved data'}</button>`:activeAccount.demo!==true&&demoMode?`<button class="home-demo-link" data-home-exit-demo>${zh?'退出示例':'Exit demo'}</button>`:'';
@@ -503,6 +504,7 @@ async function signOut() {
 window.addEventListener('pageshow', event => { if (event.persisted) signOut(); });
 
 $('health-card-button').addEventListener('click', openCard);
+$('find-clinic-button').addEventListener('click', () => insights.openClinicRequest());
 $('device-button').addEventListener('click', () => openSettings('device'));
 $('shop-button').addEventListener('click', openShop);
 function selectPage(index) {

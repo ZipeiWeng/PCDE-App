@@ -25,7 +25,8 @@ export function exampleVetFeedback(id,condition='all',variant) {
   const conditionOffset=condition==='all'?0:[...String(condition)].reduce((sum,c)=>sum+c.charCodeAt(0),0)%3;
   const summary={illustrative:true,rating:p.rating,reviewCount:p.count,
     reportedRecovery:{recoveredCount:p.recovered,completedCount:p.completed},
-    conditionRecovery:condition==='all'?{recoveredCount:p.recovered,completedCount:p.completed}:{recoveredCount:p.matched-conditionOffset,completedCount:p.matchedTotal},
+    conditionRating:{condition,rating:p.rating,reviewCount:p.matchedTotal,positiveCount:p.matched-conditionOffset,positivePercent:Math.round((p.matched-conditionOffset)/p.matchedTotal*100),minimumSample:5},
+    conditionRecovery:condition==='all'?{recoveredCount:p.recovered,completedCount:p.completed}:{condition,recoveredCount:p.matched-conditionOffset,completedCount:p.matchedTotal},
   };
   return {available:true,illustrative:true,canReview:false,summary,reviews:visits.map((item,i)=>({
     illustrative:true,displayName:item[0],rating:i===1?4:5,condition:condition==='all'?['general','skin','dental'][(index+i)%3]:condition,

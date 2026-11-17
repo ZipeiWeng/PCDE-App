@@ -269,5 +269,5 @@ export function initInsights({ getSnapshot, getStore, getAccount = () => null, o
     dialog.querySelector('#sheet-close')?.setAttribute('aria-label', 'Close current health');
     onViewChange({ alarm, status: insight.status });
   }
-  return { open, openSignCheck, openVets: () => vets.open(), useVetExample: () => vets.useExample() };
+  return { open, openSignCheck, openVets: () => vets.open(), openClinicRequest: () => vets.openRoutine(), useVetExample: () => vets.useExample() };
 }

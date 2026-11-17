@@ -1,4 +1,4 @@
-export const VET_CONDITIONS=[['all','All conditions'],['general','General care'],['mobility','Mobility & joints'],['ear','Ear'],['skin','Skin'],['digestive','Digestive'],['dental','Dental'],['respiratory','Breathing'],['other','Other']];
+export const VET_CONDITIONS=[['all','All conditions'],['general','General care'],['vaccination','Vaccination'],['mobility','Mobility & joints'],['ear','Ear'],['skin','Skin'],['digestive','Digestive'],['dental','Dental'],['respiratory','Breathing'],['other','Other']];
 export const VET_OUTCOMES=[['recovered','Recovered'],['improved','Improved'],['unchanged','Unchanged'],['worse','Worse'],['ongoing','Treatment ongoing']];
 export const coordinate=(value,maximum)=>Number.isFinite(value)&&Math.abs(value)<=maximum;
 export function safeVetWebsite(value){try{const url=new URL(String(value));return['https:','http:'].includes(url.protocol)?url.href:null;}catch{return null;}}

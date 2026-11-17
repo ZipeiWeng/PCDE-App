@@ -6,7 +6,7 @@ const backHome = (type) => ({
   continueAction:'home-good',dismiss:true,requiresOpen:true,acceptEvents:[{type}],
 });
 
-// Seven scenes. Home entrances and their contents are one scene, so opening
+// Six scenes. Home entrances and their contents are one scene, so opening
 // something never skips its explanation or adds another mandatory tutorial step.
 export const onboardingFlow = [
   step('welcome',0,'#app-workspace','Welcome!','欢迎！',
@@ -23,14 +23,10 @@ export const onboardingFlow = [
     {action:'set-good',home:true,visual:'colours',event:'continue',gesture:'tap',example:true,
       entry:{type:'health-open'},requiresOpen:true,dismiss:false}),
   step('red-alert',2,'[data-find-vet]','Yellow or red brings an alert','水球变黄或变红时，会弹出提醒',
-    'Contact nearest vet opens nearby clinics.','Contact nearest vet 可打开附近医院。',
+    'Check the signs and readings. Tap Contact nearest vet for nearby help.','查看警示症状与读数。点 Contact nearest vet 寻找附近的帮助。',
     {...backHome('sheet-close'),action:'red-alert',home:false,entry:{type:'health-alert'},
-      startsOpen:true,visual:'alert-intro',example:true,showDescription:false,
-      continueLabel:'Got it',continueLabelZh:'知道了'}),
-  step('card',4,'#health-card-button','Open your pet’s health card','打开宠物健康档案',
-    'The card button is next to Device.','健康卡入口就在设备按钮旁边。',
-    {...backHome('card-close'),home:true,gesture:'tap',entry:{type:'card-open'},
-      allow:'#card-screen summary,[data-card-tab],#card-screen .card-primary-actions,#app-sheet form,#sheet-close'}),
+      startsOpen:true,visual:'alert-intro',example:true,requiresClinicPreview:true,
+      continueLabel:'Continue tour',continueLabelZh:'继续引导'}),
   step('profile',5,'#account-button','Tap your pet photo for settings','点宠物照片，打开设置',
     'Find it at the top left.','入口在左上角。',
     {...backHome('settings-close'),home:true,gesture:'tap',entry:{type:'settings',section:'profile'},settingsGestures:true,
@@ -61,6 +57,7 @@ export function nextTourStep(id,event={},scene={}) {
   const current=onboardingSteps('en',scene).find(item=>item.id===id);
   if(current?.skipEvent&&current.skipEvent===event.type)return current.next||id;
   if(id==='score'&&scene.coloursComplete!==true)return id;
+  if(current?.requiresClinicPreview&&scene.clinicReviewed!==true)return id;
   if(!current||current.requiresOpen&&scene.opened!==true)return id;
   const alternative=current.acceptEvents?.find(expected=>matches(expected,event));
   if(alternative)return alternative.next||current.next||id;

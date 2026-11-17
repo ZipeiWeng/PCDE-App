@@ -1,7 +1,11 @@
 /* A top-layer guide. App layout and geometry stay untouched. */
-.coach-layer[data-visual="alert-intro"] .coach-note{gap:14px;}
+.coach-layer[data-visual="alert-intro"] .coach-note{gap:10px;}
 .coach-layer[data-visual="alert-intro"] .coach-note p{font-size:22px;}
-.coach-layer[data-visual="clinic-explore"] .coach-note{padding:0;gap:0;}
+.coach-layer[data-visual="alert-intro"] .coach-description{font-size:14px;line-height:1.45;}
+.coach-layer[data-visual="clinic-explore"] .coach-note,.coach-layer[data-visual="clinic-search"] .coach-note{padding:0;gap:9px;}
+.coach-layer[data-visual="clinic-explore"] .coach-note p,.coach-layer[data-visual="clinic-search"] .coach-note p{font-size:20px;}
+.coach-layer[data-visual="clinic-explore"] .coach-description,.coach-layer[data-visual="clinic-search"] .coach-description{font-size:14px;line-height:1.4;}
+.coach-footnote{color:#fffdf6c4;font-size:12px;line-height:1.4;text-align:center;max-width:280px;}
 .coach-layer[data-visual="clinic-explore"] .coach-next{font-size:14px;padding:11px 18px;min-height:44px;}
 /* The return lesson owns the entire gesture surface, including the map below. */
 .coach-layer[data-visual="swipe-return"]{pointer-events:auto;touch-action:none;cursor:grab;}
