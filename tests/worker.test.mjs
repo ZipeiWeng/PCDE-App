@@ -109,12 +109,12 @@ test('nearby vet lookup maps real OSM tags, orders by distance, deduplicates and
   ]});}});
   const url=`${origin}/api/vets?lat=51.5&lon=-0.1`;
   const response=await worker.fetch(new Request(url));assert.equal(response.status,200);
-  const result=await response.json();assert.equal(result.source,'OpenStreetMap');assert.equal(result.radiusKm,15);assert.equal(result.vets.length,2);
+  const result=await response.json();assert.equal(result.source,'OpenStreetMap');assert.equal(result.radiusKm,10);assert.equal(result.vets.length,2);
   assert.deepEqual(result.vets.map(v=>v.name),['Near Vet','Farther Vet']);
   assert.equal(result.vets[0].website,null);assert.equal(result.vets[0].address,'3 Example St, London');
   assert.equal(result.vets[1].website,'https://vet.example/');assert.equal(result.vets[1].rating,null);assert.equal(result.vets[1].reviewCount,null);
   assert.ok(!JSON.stringify(result).includes('cure'));
-  assert.equal(new URL(calls[0].url).origin,'https://ovp.dresel.systems');assert.match(new URL(calls[0].url).searchParams.get('data'),/around:15000,51.50000,-0.10000/);assert.equal(calls[0].init.method,'GET');
+  assert.equal(new URL(calls[0].url).origin,'https://ovp.dresel.systems');assert.match(new URL(calls[0].url).searchParams.get('data'),/around:10000,51.50000,-0.10000/);assert.equal(calls[0].init.method,'GET');
   await worker.fetch(new Request(url));assert.equal(calls.length,1,'repeat searches use cache');
 });
 
@@ -165,7 +165,7 @@ test('Photon fallback only accepts veterinary OSM entries and keeps stable clini
   }});
   const data=await (await worker.fetch(new Request(`${origin}/api/vets?lat=51.5&lon=-.1`))).json();
   assert.equal(data.vets.length,1);assert.equal(data.vets[0].id,'way/12');assert.equal(data.vets[0].address,'3 Park Road, London');assert.equal(data.vets[0].phone,'+44 123');assert.equal(data.vets[0].rating,null);
-  assert.equal(calls.length,3);assert.equal(new URL(calls[2]).searchParams.get('osm_tag'),'amenity:veterinary');
+  assert.equal(calls.length,3);assert.equal(new URL(calls[2]).searchParams.get('osm_tag'),'amenity:veterinary');assert.equal(new URL(calls[2]).searchParams.get('radius'),'10');
 });
 
 test('unknown locations and unavailable geocoders are distinct and never query a guessed area',async()=>{
@@ -861,4 +861,34 @@ test('a registered account without database readings cannot inject a healthy cli
   assert.equal(context.snapshot.heart,null);
   assert.equal(context.snapshot.score,null);
   assert.equal(context.snapshot.status,'unknown');
+});
+
+
+test('clinic range is validated before external calls and includes only exact in-range positions',async()=>{
+  const calls=[];const worker=createWorker({fetchImpl:async url=>{calls.push(url);return Response.json({elements:[
+    {type:'node',id:1,lat:51.5,lon:-.1,tags:{amenity:'veterinary',name:'At search location'}},
+    {type:'node',id:2,lat:51.50935,lon:-.1,tags:{amenity:'veterinary',name:'Just beyond 1 km'}},
+    {type:'node',id:3,lat:51.55,lon:-.1,tags:{amenity:'veterinary',name:'Within 10 km'}},
+    {type:'node',id:4,lat:51.8,lon:-.1,tags:{amenity:'veterinary',name:'Outside all ranges'}}
+  ]});}});
+  for(const radius of ['', '0', '-1', '2', '15', '100', 'NaN', '1.0', '1;out;']){
+    const response=await worker.fetch(new Request(`${origin}/api/vets?lat=51.5&lon=-.1&radiusKm=${encodeURIComponent(radius)}`));
+    assert.equal(response.status,400);assert.equal((await response.json()).code,'invalid_radius');
+  }
+  assert.equal(calls.length,0);
+  const read=async radius=>(await worker.fetch(new Request(`${origin}/api/vets?lat=51.5&lon=-.1&radiusKm=${radius}`))).json();
+  const small=await read(1);assert.equal(small.radiusKm,1);assert.deepEqual(small.vets.map(v=>v.id),['node/1']);
+  assert.match(new URL(calls[0]).searchParams.get('data'),/around:1000,/);
+  const medium=await read(5);assert.deepEqual(medium.vets.map(v=>v.id),['node/1','node/2']);
+  const broad=await read(10);assert.deepEqual(broad.vets.map(v=>v.id),['node/1','node/2','node/3']);
+  await read(25);assert.equal(calls.length,4,'each chosen range has its own cache');
+  await read(1);assert.equal(calls.length,4,'same range reuses its directory response');
+});
+
+test('clinic candidate pool contains the nearest forty and declares truncation',async()=>{
+  const worker=createWorker({fetchImpl:async()=>Response.json({elements:Array.from({length:45},(_,i)=>({type:'node',id:i+1,lat:51.5+i*.0002,lon:-.1,tags:{amenity:'veterinary',name:`Clinic ${i+1}`}})).reverse()})});
+  const result=await (await worker.fetch(new Request(`${origin}/api/vets?lat=51.5&lon=-.1&radiusKm=10`))).json();
+  assert.equal(result.vets.length,40);assert.equal(result.truncated,true);
+  assert.equal(result.vets[0].id,'node/1');assert.equal(result.vets.at(-1).id,'node/40');
+  assert.ok(result.vets.every(v=>v.distanceKm<=10));
 });

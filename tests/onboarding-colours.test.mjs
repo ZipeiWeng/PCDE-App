@@ -40,13 +40,13 @@ test('stale colour acknowledgements, unrelated events and missing state cannot s
   }
 });
 
-test('replay starts at green, completion is stable and the walkthrough stays at seven scenes',()=>{
+test('replay starts at green, completion is stable and the walkthrough stays at six scenes',()=>{
   assert.equal(colourLesson(0).tone,'good');
   assert.equal(colourLesson(0).complete,false);
   assert.equal(advanceColourLesson(3,'alert'),3);
   assert.equal(advanceColourLesson(3,'good'),3);
   assert.equal(colourLesson(NaN).tone,'good');
-  assert.equal(onboardingSteps().length,7);
+  assert.equal(onboardingSteps().length,6);
   assert.equal(nextTourStep('score',{type:'sheet-close'},{opened:false,coloursComplete:true}),'score');
 });
 
